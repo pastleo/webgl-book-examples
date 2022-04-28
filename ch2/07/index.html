@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>02-texture-2d</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+    }
+    #controls {
+      position: fixed;
+      top: 0;
+      right: 0;
+      margin: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <form id="controls">
+    <div>
+      <input type="radio" id="cat1" name="texture" value="0" checked>
+      <label for="cat1">Cat 1</label>
+      <input type="radio" id="cat2" name="texture" value="1">
+      <label for="cat2">Cat 2</label>
+      <input type="radio" id="penguin" name="texture" value="2">
+      <label for="penguin">Penguin</label>
+    </div>
+    <div>
+      <label for="speed">Speed</label>
+      <input
+        type="range" id="speed" name="speed"
+        min="0" max="0.5" step="0.01" value="0.08"
+      >
+    </div>
+    <div>
+      <label for="translate-x">TranslateX</label>
+      <input
+        type="range" id="translate-x" name="translate-x"
+        min="-150" max="150" value="0"
+      >
+    </div>
+    <div>
+      <label for="translate-y">TranslateY</label>
+      <input
+        type="range" id="translate-y" name="translate-y"
+        min="-150" max="150" value="0"
+      >
+    </div>
+    <div>
+      <label for="scale">Scale</label>
+      <input
+        type="range" id="scale" name="scale"
+        min="0" max="10" value="1" step="0.1"
+      >
+    </div>
+    <div>
+      <label for="rotation">Rotation</label>
+      <input
+        type="range" id="rotation" name="rotation"
+        min="0" max="360" value="0"
+      >
+    </div>
+  </form>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
