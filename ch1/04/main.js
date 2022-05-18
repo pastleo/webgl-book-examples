@@ -2,8 +2,11 @@ const canvas = document.getElementById('canvas');
 const gl = canvas.getContext('webgl2');
 window.gl = gl;
 
+// 手動去設定這些數值來符合 <canvas /> 元素的實際寬高
 canvas.width = canvas.clientWidth;
 canvas.height = canvas.clientHeight;
+
+// 手動設定『繪製區域』
 gl.viewport(
   0, // x
   0, // y
@@ -41,6 +44,7 @@ const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
 const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 const program = createProgram(gl, vertexShader, fragmentShader);
 
+// 編譯並建立 shader 的詳細流程
 function createShader(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -52,6 +56,7 @@ function createShader(gl, type, source) {
   gl.deleteShader(shader);
 }
 
+// 連結 shader 的詳細流程
 function createProgram(gl, vertexShader, fragmentShader) {
   const program = gl.createProgram();
   gl.attachShader(program, vertexShader);
@@ -65,8 +70,9 @@ function createProgram(gl, vertexShader, fragmentShader) {
   gl.deleteProgram(program);
 }
 
+// 取得一個 attribute 在 program 中的位置
 const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-
+// 取得一個 Uniform 在 program 中的位置
 const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
 const positionBuffer = gl.createBuffer();
@@ -98,8 +104,9 @@ console.log({
   positionBuffer,
 });
 
+// 使用建立好的 program 
 gl.useProgram(program);
-
+// 設定 uniform 的數值
 gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
 gl.drawArrays(

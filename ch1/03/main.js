@@ -5,6 +5,7 @@ window.gl = gl;
 gl.clearColor(108/255, 225/255, 153/255, 1);
 gl.clear(gl.COLOR_BUFFER_BIT);
 
+// 把 GLSL 寫的 vertex shader 以 `` 字串包在 Javascript 中：
 const vertexShaderSource = `#version 300 es
 in vec2 a_position;
 
@@ -13,6 +14,7 @@ void main() {
 }
 `;
 
+// 把 GLSL 寫的 fragment shader 以 `` 字串包在 Javascript 中：
 const fragmentShaderSource = `#version 300 es
 precision highp float;
 
@@ -23,10 +25,14 @@ void main() {
 }
 `;
 
+// 編譯並建立 vertexShader
 const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+// 編譯並建立 fragmentShader
 const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+// 連結 vertex shader 及 fragment shader 獲得 program
 const program = createProgram(gl, vertexShader, fragmentShader);
 
+// 編譯並建立 shader 的詳細流程
 function createShader(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -38,6 +44,7 @@ function createShader(gl, type, source) {
   gl.deleteShader(shader);
 }
 
+// 連結 shader 的詳細流程
 function createProgram(gl, vertexShader, fragmentShader) {
   const program = gl.createProgram();
   gl.attachShader(program, vertexShader);
@@ -51,13 +58,18 @@ function createProgram(gl, vertexShader, fragmentShader) {
   gl.deleteProgram(program);
 }
 
+// 取得一個 attribute 在 program 中的位置
 const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
 
+
+// 建立並使用 Buffer
 const positionBuffer = gl.createBuffer();
+// 設定目前使用中的 array buffer
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
+// 啟用 Vertex Attribute Array 這個功能
 gl.enableVertexAttribArray(positionAttributeLocation);
-
+// 設定 attribute 拿資料的方法
 gl.vertexAttribPointer(
   positionAttributeLocation, // index
   2, // size
@@ -67,6 +79,7 @@ gl.vertexAttribPointer(
   0, // offset
 );
 
+// 對 buffer 輸入三角形頂點的位置資料
 gl.bufferData(
   gl.ARRAY_BUFFER,
   new Float32Array([
@@ -81,8 +94,9 @@ console.log({
   positionAttributeLocation,
   positionBuffer,
 });
-
+// 使用建立好的 program 
 gl.useProgram(program);
+// 畫出三角形
 gl.drawArrays(
   gl.TRIANGLES, // mode
   0, // first
