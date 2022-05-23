@@ -24,9 +24,16 @@ uniform vec2 u_resolution;
 
 void main() {
   gl_Position = vec4(
+    // 把作為畫面中 pixel 位置的 a_position 換算成 clip space
     a_position / u_resolution * vec2(2, -2) + vec2(-1, 1),
     0, 1
   );
+  // = vec4(
+  //   a_position.x / u_resolution.x * 2.0 - 1.0,
+  //   a_position.y / u_resolution.y * -2.0 + 1.0,
+  //   0,
+  //   1
+  // );
 }
 `;
 
@@ -70,9 +77,9 @@ function createProgram(gl, vertexShader, fragmentShader) {
   gl.deleteProgram(program);
 }
 
-// 取得一個 attribute 在 program 中的位置
+// 取得 位置 attribute a_position 在 program 中的位置
 const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-// 取得一個 Uniform 在 program 中的位置
+// 取得 畫布解析度 uniform u_resolution 在 program 中的位置
 const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
 const positionBuffer = gl.createBuffer();
@@ -104,9 +111,10 @@ console.log({
   positionBuffer,
 });
 
-// 使用建立好的 program 
+// 使用建立好的 program
 gl.useProgram(program);
-// 設定 uniform 的數值
+
+// 設定畫布解析度之 uniform 數值
 gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
 gl.drawArrays(

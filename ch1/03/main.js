@@ -58,9 +58,8 @@ function createProgram(gl, vertexShader, fragmentShader) {
   gl.deleteProgram(program);
 }
 
-// 取得一個 attribute 在 program 中的位置
+// 取得 位置 attribute a_position 在 program 中的位置
 const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-
 
 // 建立並使用 Buffer
 const positionBuffer = gl.createBuffer();
@@ -94,8 +93,10 @@ console.log({
   positionAttributeLocation,
   positionBuffer,
 });
+
 // 使用建立好的 program 
 gl.useProgram(program);
+
 // 畫出三角形
 gl.drawArrays(
   gl.TRIANGLES, // mode

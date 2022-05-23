@@ -73,11 +73,11 @@ function createProgram(gl, vertexShader, fragmentShader) {
   gl.deleteProgram(program);
 }
 
-// 取得一個 attribute 在 program 中的位置
+// 取得 位置 attribute a_position 在 program 中的位置
 const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
-// 取得 attribute a_color 的變數位置
+// 取得 顏色 attribute a_color 在 program 的變數位置
 const colorAttributeLocation = gl.getAttribLocation(program, 'a_color');
-// 取得一個 Uniform 在 program 中的位置
+// 取得 畫布解析度 uniform u_resolution 在 program 中的位置
 const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
 const positionBuffer = gl.createBuffer();
@@ -151,9 +151,10 @@ console.log({
   positionBuffer, colorBuffer
 });
 
-// 使用建立好的 program 
+// 使用建立好的 program
 gl.useProgram(program);
-// 設定 uniform 的數值
+
+// 設定畫布解析度之 uniform 數值
 gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
 gl.drawArrays(
