@@ -47,6 +47,7 @@ const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
 const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 const program = createProgram(gl, vertexShader, fragmentShader);
 
+// 編譯並建立 shader 的詳細流程
 function createShader(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -58,6 +59,7 @@ function createShader(gl, type, source) {
   gl.deleteShader(shader);
 }
 
+// 連結 shader 的詳細流程
 function createProgram(gl, vertexShader, fragmentShader) {
   const program = gl.createProgram();
   gl.attachShader(program, vertexShader);
@@ -71,9 +73,11 @@ function createProgram(gl, vertexShader, fragmentShader) {
   gl.deleteProgram(program);
 }
 
+// 取得 位置 attribute a_position 在 program 中的位置
 const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+// 取得 顏色 attribute a_color 在 program 的變數位置
 const colorAttributeLocation = gl.getAttribLocation(program, 'a_color');
-
+// 取得 畫布解析度 uniform u_resolution 在 program 中的位置
 const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
 const positionBuffer = gl.createBuffer();
@@ -108,6 +112,7 @@ gl.bufferData(
   gl.STATIC_DRAW,
 );
 
+// 對於 attribute a_color 進行『畫什麼』的建立、設定綁定 buffer
 const colorBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
 
@@ -121,6 +126,7 @@ gl.vertexAttribPointer(
   0, // offset
 );
 
+// 傳送 a_color 的資料到 buffer 中，為每個頂點指定一個顏色
 gl.bufferData(
   gl.ARRAY_BUFFER,
   new Uint8Array([
@@ -145,8 +151,10 @@ console.log({
   positionBuffer, colorBuffer
 });
 
+// 使用建立好的 program
 gl.useProgram(program);
 
+// 設定畫布解析度之 uniform 數值
 gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
 gl.drawArrays(
