@@ -304,7 +304,6 @@ main();
 function handlePointerDown(app, touchOrMouseEvent) {
   const x = touchOrMouseEvent.pageX - app.gl.canvas.width / 2;
   const y = touchOrMouseEvent.pageY - app.gl.canvas.height / 2;
-  console.log( {x, y})
 
   if (x * x > y * y) {
     if (x > 0) {
