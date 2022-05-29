@@ -1,6 +1,10 @@
 import { createShader, createProgram, degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
+import * as twgl from 'https://unpkg.com/twgl.js@latest/dist/4.x/twgl-full.module.js';
+
+window.twgl = twgl;
+
 const vertexShaderSource = `#version 300 es
 in vec4 a_position;
 in vec3 a_color;
@@ -92,6 +96,46 @@ async function setup() {
     );
 
     objects.pModel = {
+      attribs, numElements,
+      buffers,
+    };
+  }
+
+  { // sphere, 球體
+    // 產生、轉換成球體 attribs 資料：
+    const attribs = twgl.primitives.deindexVertices(
+      // 產生球體 indexed element attribs 資料：
+      twgl.primitives.createSphereVertices(10, 32, 32)
+    );
+
+    // 計算頂點（element）數量：
+    const numElements = (
+      attribs.position.length / attribs.position.numComponents
+    );
+
+    const buffers = {};
+
+    // a_position
+    buffers.position = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+
+    gl.enableVertexAttribArray(attributes.position);
+    gl.vertexAttribPointer(
+      attributes.position,
+      attribs.position.numComponents, // size
+      gl.FLOAT, // type
+      false, // normalize
+      0, // stride
+      0, // offset
+    );
+
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array(attribs.position),
+      gl.STATIC_DRAW,
+    );
+
+    objects.sphere = {
       attribs, numElements,
       buffers,
     };
@@ -220,7 +264,7 @@ function render(app) {
 
   const cameraMatrix = matrix4.lookAt(
     state.cameraPosition,
-    state.translate,
+    [250, 0, 0],
     [0, 1, 0],
   );
   const viewMatrix = matrix4.multiply(
@@ -251,6 +295,26 @@ function render(app) {
     gl.uniform3f(uniforms.color, 0, 0, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, objects.pModel.numElements);
+  }
+
+  { // sphere
+    const worldMatrix = matrix4.multiply(
+      // 將球體放置在 [300, -80, 0] 的位置：
+      matrix4.translate(300, -80, 0),
+      // 放大 3 倍：
+      matrix4.scale(3, 3, 3),
+    );
+
+    gl.uniformMatrix4fv(
+      uniforms.matrix,
+      false,
+      matrix4.multiply(viewMatrix, worldMatrix),
+    );
+
+    // 設定此球體為藍色（#437bd0）純色物件：
+    gl.uniform3f(uniforms.color, 67/255, 123/255, 208/255);
+
+    gl.drawArrays(gl.TRIANGLES, 0, objects.sphere.numElements);
   }
 }
 
