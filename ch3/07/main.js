@@ -50,10 +50,14 @@ async function setup() {
   // 存放 3D 物件『們』的容器
   const objects = {};
 
-  { // pModel, P 形狀的物件 初始化
-    // 對 modelBufferArrays 解構，取出 attribs 以及 numElements
+  { // pModel, P 形狀的物件
     const { attribs, numElements } = createModelBufferArrays();
     const buffers = {}; // pModel 專用的 buffers
+
+    // 產生 pModel 專屬的 VAO 『工作空間』
+    const vao = gl.createVertexArray();
+    // 切換到 pModel 專屬的 VAO 『工作空間』
+    gl.bindVertexArray(vao);
 
     // a_position
     buffers.position = gl.createBuffer();
@@ -97,21 +101,23 @@ async function setup() {
 
     objects.pModel = {
       attribs, numElements,
-      buffers,
+      vao, buffers,
     };
   }
 
   { // sphere, 球體
-    // 產生、轉換成球體 attribs 資料：
     const attribs = twgl.primitives.deindexVertices(
-      // 產生球體 indexed element attribs 資料：
       twgl.primitives.createSphereVertices(10, 32, 32)
     );
 
-    // 計算頂點（element）數量：
     const numElements = (
       attribs.position.length / attribs.position.numComponents
     );
+
+    // 產生 sphere 專屬的 VAO 『工作空間』
+    const vao = gl.createVertexArray();
+    // 切換到 sphere 專屬的 VAO 『工作空間』
+    gl.bindVertexArray(vao);
 
     const buffers = {};
 
@@ -137,7 +143,43 @@ async function setup() {
 
     objects.sphere = {
       attribs, numElements,
-      buffers,
+      vao, buffers,
+    };
+  }
+
+  { // ground
+    const attribs = twgl.primitives.deindexVertices(
+      twgl.primitives.createPlaneVertices(1, 1)
+    );
+    const numElements = attribs.position.length / attribs.position.numComponents;
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+
+    const buffers = {};
+
+    // a_position
+    buffers.position = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+
+    gl.enableVertexAttribArray(attributes.position);
+    gl.vertexAttribPointer(
+      attributes.position,
+      attribs.position.numComponents, // size
+      gl.FLOAT, // type
+      false, // normalize
+      0, // stride
+      0, // offset
+    );
+
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array(attribs.position),
+      gl.STATIC_DRAW,
+    );
+
+    objects.ground = {
+      attribs, numElements,
+      vao, buffers,
     };
   }
 
@@ -277,7 +319,9 @@ function render(app) {
     matrix4.inverse(cameraMatrix),
   );
 
-  { // pModel, P 形狀的物件 轉換、繪製
+  { // pModel, P 形狀的物件
+    gl.bindVertexArray(objects.pModel.vao);
+
     const worldMatrix = matrix4.multiply(
       matrix4.translate(...state.translate),
       matrix4.xRotate(state.rotate[0]),
@@ -298,10 +342,10 @@ function render(app) {
   }
 
   { // sphere, 球體
+    gl.bindVertexArray(objects.sphere.vao);
+
     const worldMatrix = matrix4.multiply(
-      // 將球體放置在 [300, -80, 0] 的位置：
       matrix4.translate(300, -80, 0),
-      // 放大 3 倍：
       matrix4.scale(3, 3, 3),
     );
 
@@ -311,10 +355,31 @@ function render(app) {
       matrix4.multiply(viewMatrix, worldMatrix),
     );
 
-    // 設定此球體為藍色（#437bd0）純色物件：
     gl.uniform3f(uniforms.color, 67/255, 123/255, 208/255);
 
     gl.drawArrays(gl.TRIANGLES, 0, objects.sphere.numElements);
+  }
+
+  { // ground
+    gl.bindVertexArray(objects.ground.vao);
+
+    const worldMatrix = matrix4.multiply(
+      // 放大成 500 長深（寬）
+      matrix4.translate(250, -100, -50),
+      // 放置在 [250, -100, -50] 的位置
+      matrix4.scale(500, 1, 500),
+    );
+
+    gl.uniformMatrix4fv(
+      uniforms.matrix,
+      false,
+      matrix4.multiply(viewMatrix, worldMatrix),
+    );
+
+    // 純色顏色設定成灰色 #808080
+    gl.uniform3f(uniforms.color, 0.5, 0.5, 0.5);
+
+    gl.drawArrays(gl.TRIANGLES, 0, objects.ground.numElements);
   }
 }
 
