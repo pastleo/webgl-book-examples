@@ -75,27 +75,6 @@ async function setup() {
     }))
   );
 
-  { // null texture
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0, // level
-      gl.RGBA, // internalFormat
-      1, // width
-      1, // height
-      0, // border
-      gl.RGBA, // format
-      gl.UNSIGNED_BYTE, // type
-      new Uint8Array([
-        0, 0, 0, 255
-      ])
-    );
-
-    textures.nil = texture;
-  }
-
   const objects = {};
 
   { // sphere
@@ -243,7 +222,7 @@ function render(app) {
   const cameraMatrix = matrix4.lookAt(state.cameraPosition, [0, 0, 0], [0, 1, 0]);
 
   const viewMatrix = matrix4.multiply(
-    matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 2000),
+    matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 200),
     matrix4.inverse(cameraMatrix),
   );
 
