@@ -1,3 +1,4 @@
+//   來自工具箱的 async function : createShader, createProgram, loadImage
 import { createShader, createProgram, loadImage } from '../../lib/utils.js';
 
 const vertexShaderSource = `#version 300 es

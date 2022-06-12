@@ -30,14 +30,16 @@ void main() {
 }
 `;
 
+// 初始化程式
 async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
-
+  // 編譯連結GLSL shaders
   const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
   const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
   const program = createProgram(gl, vertexShader, fragmentShader);
 
+  // 取得 GLSL 變數位置
   const attributes = {
     position: gl.getAttribLocation(program, 'a_position'),
     texcoord: gl.getAttribLocation(program, 'a_texcoord'),
@@ -47,6 +49,7 @@ async function setup() {
     texture: gl.getUniformLocation(program, 'u_texture'),
   };
 
+  // 下載圖片，建立 texture
   const image = await loadImage('/assets/cat-1.jpg');
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -60,7 +63,8 @@ async function setup() {
     image, // data
   );
   gl.generateMipmap(gl.TEXTURE_2D);
-
+  
+  // 設立 buffer 及 vertex attribute
   const buffers = {};
 
   // a_position
@@ -119,6 +123,7 @@ async function setup() {
     gl.STATIC_DRAW,
   );
 
+  // 回傳值
   return {
     gl,
     program, attributes, uniforms,
@@ -126,6 +131,7 @@ async function setup() {
   };
 }
 
+// 執行『畫』這個動作
 function render(app) {
   const {
     gl,
@@ -150,6 +156,7 @@ function render(app) {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
+// 把 setup() 及 render() 串起來
 async function main() {
   const app = await setup();
   window.app = app;

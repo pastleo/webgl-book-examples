@@ -1,3 +1,4 @@
+//   來自工具箱的 async function : createShader, createProgram, loadImage
 import { createShader, createProgram, loadImage } from '../../lib/utils.js';
 
 const vertexShaderSource = `#version 300 es
@@ -44,13 +45,17 @@ async function main() {
   const program = createProgram(gl, vertexShader, fragmentShader);
 
   const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+  // 取得 a_texcorrd attribute 位置
   const texcoordAttributeLocation = gl.getAttribLocation(program, 'a_texcoord');
   const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
+  // 取得 texture 的 uniform 位置
   const textureUniformLocation = gl.getUniformLocation(program, 'u_texture');
 
+  // 呼叫圖片
   const image = await loadImage('/assets/pastleo.jpg');
-
+  // 建立 texture
   const texture = gl.createTexture();
+  // 對準 texture
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -61,6 +66,7 @@ async function main() {
     image, // data
   );
 
+  // 把各個尺寸的縮圖做好放在記憶體裡
   gl.generateMipmap(gl.TEXTURE_2D);
 
   // a_position
@@ -91,10 +97,12 @@ async function main() {
     gl.STATIC_DRAW,
   );
 
-  // a_texcoord
+  // 建立 a_texcoord buffer
   const texcoordBuffer = gl.createBuffer();
+  // 設定 vertex attribute array
   gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
 
+  
   gl.enableVertexAttribArray(texcoordAttributeLocation);
   gl.vertexAttribPointer(
     texcoordAttributeLocation,
@@ -123,8 +131,11 @@ async function main() {
 
   gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
+  // 通道的編號， 0 使用為第一個通道
   const textureUnit = 0;
+  // 把目標指向建立好的 texture
   gl.bindTexture(gl.TEXTURE_2D, texture);
+  // 啟用通道並把目標 texture 設定到通道上
   gl.activeTexture(gl.TEXTURE0 + textureUnit);
   gl.uniform1i(textureUniformLocation, textureUnit);
 

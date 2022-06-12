@@ -47,6 +47,7 @@ async function setup() {
     texture: gl.getUniformLocation(program, 'u_texture'),
   };
 
+  // 下載並建立 3 張圖片以及其 texture
   const textures = await Promise.all([
     '/assets/cat-1.jpg',
     '/assets/cat-2.jpg',
@@ -167,6 +168,7 @@ async function main() {
   window.app = app;
   window.gl = app.gl;
 
+  // 監聽 input 事件
   const controlsForm = document.getElementById('controls');
   controlsForm.addEventListener('input', () => {
     const formData = new FormData(controlsForm);
