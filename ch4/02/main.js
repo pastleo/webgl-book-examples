@@ -1,5 +1,5 @@
 import * as twgl from 'https://unpkg.com/twgl.js@4/dist/4.x/twgl-full.module.js';
-import { loadImage } from '../../lib/utils.js';
+import { createShader, createProgram, loadImage } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
 const vertexShaderSource = `#version 300 es
@@ -50,7 +50,9 @@ async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
 
-  const program = twgl.createProgram(gl, [vertexShaderSource, fragmentShaderSource]);
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+  const program = createProgram(gl, vertexShader, fragmentShader);
 
   const attributes = {
     position: gl.getAttribLocation(program, 'a_position'),

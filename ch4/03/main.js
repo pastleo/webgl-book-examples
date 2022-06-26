@@ -1,5 +1,5 @@
 import * as twgl from 'https://unpkg.com/twgl.js@4/dist/4.x/twgl-full.module.js';
-import { createShader, createProgram, loadImage } from '../../lib/utils.js';
+import { loadImage } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
 const vertexShaderSource = `#version 300 es
@@ -35,14 +35,11 @@ out vec4 outColor;
 void main() {
   vec3 color = u_color + texture(u_texture, v_texcoord).rgb;
 
-  // 轉換 normal, 光線反向成單位向量：
   vec3 normal = normalize(v_normal);
   vec3 surfaceToLightDir = normalize(-u_lightDir);
 
-  // 算出明暗度：
   float colorLight = clamp(dot(surfaceToLightDir, normal), 0.0, 1.0);
 
-  // 輸出顏色，改成乘以數值為 0 至 1 之間的明暗度
   outColor = vec4(color * colorLight, 1);
 }
 `;
@@ -53,22 +50,7 @@ async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
 
-  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-  const program = createProgram(gl, vertexShader, fragmentShader);
-
-  const attributes = {
-    position: gl.getAttribLocation(program, 'a_position'),
-    texcoord: gl.getAttribLocation(program, 'a_texcoord'),
-    normal: gl.getAttribLocation(program, 'a_normal'),
-  };
-  const uniforms = {
-    matrix: gl.getUniformLocation(program, 'u_matrix'),
-    normalMatrix: gl.getUniformLocation(program, 'u_normalMatrix'),
-    color: gl.getUniformLocation(program, 'u_color'),
-    texture: gl.getUniformLocation(program, 'u_texture'),
-    lightDir: gl.getUniformLocation(program, 'u_lightDir'),
-  };
+  const programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
 
   const textures = Object.fromEntries(
     await Promise.all(Object.entries({
@@ -98,10 +80,8 @@ async function setup() {
   const objects = {};
 
   { // sphere
-    const vertexDataArrays = twgl.primitives.deindexVertices(
-      twgl.primitives.createSphereVertices(1, 32, 32)
-    );
-    const numElements = vertexDataArrays.position.length / vertexDataArrays.position.numComponents;
+    const vertexDataArrays = twgl.primitives.createSphereVertices(1, 32, 32);
+    const numElements = vertexDataArrays.indices.length;
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
@@ -111,9 +91,9 @@ async function setup() {
     buffers.position = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
 
-    gl.enableVertexAttribArray(attributes.position);
+    gl.enableVertexAttribArray(programInfo.attribSetters.a_position.location);
     gl.vertexAttribPointer(
-      attributes.position,
+      programInfo.attribSetters.a_position.location,
       vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
@@ -131,9 +111,9 @@ async function setup() {
     buffers.texcoord = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoord);
 
-    gl.enableVertexAttribArray(attributes.texcoord);
+    gl.enableVertexAttribArray(programInfo.attribSetters.a_texcoord.location);
     gl.vertexAttribPointer(
-      attributes.texcoord,
+      programInfo.attribSetters.a_texcoord.location,
       vertexDataArrays.texcoord.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
@@ -151,9 +131,9 @@ async function setup() {
     buffers.normal = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normal);
 
-    gl.enableVertexAttribArray(attributes.normal);
+    gl.enableVertexAttribArray(programInfo.attribSetters.a_normal.location);
     gl.vertexAttribPointer(
-      attributes.normal,
+      programInfo.attribSetters.a_normal.location,
       vertexDataArrays.normal.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
@@ -166,6 +146,11 @@ async function setup() {
       new Float32Array(vertexDataArrays.normal),
       gl.STATIC_DRAW,
     );
+
+    // indexed element indices
+    buffers.indices = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, vertexDataArrays.indices, gl.STATIC_DRAW);
 
     objects.sphere = {
       vertexDataArrays, numElements,
@@ -174,10 +159,8 @@ async function setup() {
   }
 
   { // ground
-    const vertexDataArrays = twgl.primitives.deindexVertices(
-      twgl.primitives.createPlaneVertices()
-    );
-    const numElements = vertexDataArrays.position.length / vertexDataArrays.position.numComponents;
+    const vertexDataArrays = twgl.primitives.createPlaneVertices();
+    const numElements = vertexDataArrays.indices.length;
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
@@ -187,9 +170,9 @@ async function setup() {
     buffers.position = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
 
-    gl.enableVertexAttribArray(attributes.position);
+    gl.enableVertexAttribArray(programInfo.attribSetters.a_position.location);
     gl.vertexAttribPointer(
-      attributes.position,
+      programInfo.attribSetters.a_position.location,
       vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
@@ -207,9 +190,9 @@ async function setup() {
     buffers.texcoord = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoord);
 
-    gl.enableVertexAttribArray(attributes.texcoord);
+    gl.enableVertexAttribArray(programInfo.attribSetters.a_texcoord.location);
     gl.vertexAttribPointer(
-      attributes.texcoord,
+      programInfo.attribSetters.a_texcoord.location,
       vertexDataArrays.texcoord.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
@@ -227,9 +210,9 @@ async function setup() {
     buffers.normal = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normal);
 
-    gl.enableVertexAttribArray(attributes.normal);
+    gl.enableVertexAttribArray(programInfo.attribSetters.a_normal.location);
     gl.vertexAttribPointer(
-      attributes.normal,
+      programInfo.attribSetters.a_normal.location,
       vertexDataArrays.normal.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
@@ -242,6 +225,11 @@ async function setup() {
       new Float32Array(vertexDataArrays.normal),
       gl.STATIC_DRAW,
     );
+
+    // indexed element indices
+    buffers.indices = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, vertexDataArrays.indices, gl.STATIC_DRAW);
 
     objects.ground = {
       vertexDataArrays, numElements,
@@ -254,7 +242,7 @@ async function setup() {
 
   return {
     gl,
-    program, attributes, uniforms,
+    programInfo,
     textures, objects,
     state: {
       fieldOfView: degToRad(45),
@@ -270,7 +258,7 @@ async function setup() {
 function render(app) {
   const {
     gl,
-    program, uniforms,
+    programInfo,
     textures, objects,
     state,
   } = app;
@@ -279,7 +267,7 @@ function render(app) {
   gl.canvas.height = gl.canvas.clientHeight;
   gl.viewport(0, 0, canvas.width, canvas.height);
 
-  gl.useProgram(program);
+  gl.useProgram(programInfo.program);
 
   const cameraMatrix = matrix4.lookAt(state.cameraPosition, [0, 0, 0], [0, 1, 0]);
 
@@ -288,9 +276,9 @@ function render(app) {
     matrix4.inverse(cameraMatrix),
   );
 
-  const textureUnit = 0;
-
-  gl.uniform3f(uniforms.lightDir, ...state.lightDir);
+  twgl.setUniforms(programInfo, {
+    u_lightDir: state.lightDir,
+  });
 
   { // sphere
     gl.bindVertexArray(objects.sphere.vao);
@@ -300,25 +288,14 @@ function render(app) {
       matrix4.scale(state.sphereScaleX, 1, 1),
     );
 
-    gl.uniformMatrix4fv(
-      uniforms.matrix,
-      false,
-      matrix4.multiply(viewMatrix, worldMatrix),
-    );
+    twgl.setUniforms(programInfo, {
+      u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+      u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
+      u_color: [0, 0, 0],
+      u_texture: textures.steel,
+    });
 
-    gl.uniformMatrix4fv(
-      uniforms.normalMatrix,
-      false,
-      matrix4.transpose(matrix4.inverse(worldMatrix)),
-    );
-
-    gl.uniform3f(uniforms.color, 0, 0, 0);
-
-    gl.bindTexture(gl.TEXTURE_2D, textures.steel);
-    gl.activeTexture(gl.TEXTURE0 + textureUnit);
-    gl.uniform1i(uniforms.texture, textureUnit);
-
-    gl.drawArrays(gl.TRIANGLES, 0, objects.sphere.numElements);
+    gl.drawElements(gl.TRIANGLES, objects.sphere.numElements, gl.UNSIGNED_SHORT, 0);
   }
 
   { // ground
@@ -329,25 +306,14 @@ function render(app) {
       matrix4.scale(10, 1, 10),
     );
 
-    gl.uniformMatrix4fv(
-      uniforms.matrix,
-      false,
-      matrix4.multiply(viewMatrix, worldMatrix),
-    );
+    twgl.setUniforms(programInfo, {
+      u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+      u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
+      u_color: [0, 0, 0],
+      u_texture: textures.wood,
+    });
 
-    gl.uniformMatrix4fv(
-      uniforms.normalMatrix,
-      false,
-      matrix4.transpose(matrix4.inverse(worldMatrix)),
-    );
-
-    gl.uniform3f(uniforms.color, 0, 0, 0);
-
-    gl.bindTexture(gl.TEXTURE_2D, textures.wood);
-    gl.activeTexture(gl.TEXTURE0 + textureUnit);
-    gl.uniform1i(uniforms.texture, textureUnit);
-
-    gl.drawArrays(gl.TRIANGLES, 0, objects.ground.numElements);
+    gl.drawElements(gl.TRIANGLES, objects.ground.numElements, gl.UNSIGNED_SHORT, 0);
   }
 }
 
