@@ -160,6 +160,7 @@ async function setup() {
       gl.STATIC_DRAW,
     );
 
+    // indexed element indices
     buffers.indices = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, vertexDataArrays.indices, gl.STATIC_DRAW);
@@ -238,6 +239,7 @@ async function setup() {
       gl.STATIC_DRAW,
     );
 
+    // indexed element indices
     buffers.indices = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, vertexDataArrays.indices, gl.STATIC_DRAW);
