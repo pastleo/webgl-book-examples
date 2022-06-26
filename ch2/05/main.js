@@ -142,7 +142,7 @@ async function setup() {
       texture: 0,
       offset: [0, 0], // 位置
       direction: [Math.cos(directionDeg), Math.sin(directionDeg)], // 移動方向
-      speed: 0.08,  // 預設速度
+      speed: 0.08, // 預設速度
     },
     time: 0,
   };
@@ -184,8 +184,7 @@ function loop(app, now = 0) {
   state.offset = state.offset.map(
     (v, i) => v + state.direction[i] * timeDiff * state.speed
   );
-  
-  
+ 
   // 碰撞測試
   if (state.offset[0] + 150 > gl.canvas.width) {
     state.direction[0] *= -1;
@@ -194,7 +193,7 @@ function loop(app, now = 0) {
     state.direction[0] *= -1;
     state.offset[0] = 0;
   }
-  
+
   if (state.offset[1] + 150 > gl.canvas.height) {
     state.direction[1] *= -1;
     state.offset[1] = gl.canvas.height - 150;

@@ -34,7 +34,7 @@ void main() {
 async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
-  // 編譯連結GLSL shaders
+  // 編譯連結 GLSL shaders
   const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
   const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
   const program = createProgram(gl, vertexShader, fragmentShader);
@@ -123,7 +123,7 @@ async function setup() {
     gl.STATIC_DRAW,
   );
 
-  // 回傳值
+  // 回傳 "app" 之內容
   return {
     gl,
     program, attributes, uniforms,
