@@ -47,8 +47,8 @@ async function setup() {
   const objects = {};
 
   { // pModel, P 形狀的物件 初始化
-    // 對 modelBufferArrays 解構，取出 attribs 以及 numElements
-    const { attribs, numElements } = createModelBufferArrays();
+    // 對 modelBufferArrays 解構，取出 vertexDataArrays 以及 numElements
+    const { vertexDataArrays, numElements } = createModelBufferArrays();
     const buffers = {}; // pModel 專用的 buffers
 
     // a_position
@@ -67,7 +67,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.a_position),
+      new Float32Array(vertexDataArrays.a_position),
       gl.STATIC_DRAW,
     );
 
@@ -87,12 +87,12 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.a_color),
+      new Float32Array(vertexDataArrays.a_color),
       gl.STATIC_DRAW,
     );
 
     objects.pModel = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       buffers,
     };
   }
@@ -180,7 +180,7 @@ function createModelBufferArrays() {
 
   return {
     numElements: a_position.length / 3,
-    attribs: {
+    vertexDataArrays: {
       a_position, a_color,
     },
   };

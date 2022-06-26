@@ -61,7 +61,7 @@ async function setup() {
 
   gl.bufferData(
     gl.ARRAY_BUFFER,
-    new Float32Array(modelBufferArrays.attribs.a_position),
+    new Float32Array(modelBufferArrays.vertexDataArrays.a_position),
     gl.STATIC_DRAW,
   );
 
@@ -81,7 +81,7 @@ async function setup() {
 
   gl.bufferData(
     gl.ARRAY_BUFFER,
-    new Float32Array(modelBufferArrays.attribs.a_color),
+    new Float32Array(modelBufferArrays.vertexDataArrays.a_color),
     gl.STATIC_DRAW,
   );
 
@@ -166,7 +166,7 @@ function createModelBufferArrays() {
 
   return {
     numElements: a_position.length / 3,
-    attribs: {
+    vertexDataArrays: {
       a_position, a_color,
     },
   };

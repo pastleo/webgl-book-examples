@@ -51,8 +51,8 @@ async function setup() {
   const objects = {};
 
   { // pModel, P 形狀的物件 初始化
-    // 對 modelBufferArrays 解構，取出 attribs 以及 numElements
-    const { attribs, numElements } = createModelBufferArrays();
+    // 對 modelBufferArrays 解構，取出 vertexDataArrays 以及 numElements
+    const { vertexDataArrays, numElements } = createModelBufferArrays();
     const buffers = {}; // pModel 專用的 buffers
 
     // a_position
@@ -71,7 +71,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.a_position),
+      new Float32Array(vertexDataArrays.a_position),
       gl.STATIC_DRAW,
     );
 
@@ -91,26 +91,26 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.a_color),
+      new Float32Array(vertexDataArrays.a_color),
       gl.STATIC_DRAW,
     );
 
     objects.pModel = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       buffers,
     };
   }
 
   { // sphere, 球體
-    // 產生、轉換成球體 attribs 資料：
-    const attribs = twgl.primitives.deindexVertices(
-      // 產生球體 indexed element attribs 資料：
+    // 產生、轉換成球體 vertexDataArrays 資料：
+    const vertexDataArrays = twgl.primitives.deindexVertices(
+      // 產生球體 indexed element vertexDataArrays 資料：
       twgl.primitives.createSphereVertices(10, 32, 32)
     );
 
     // 計算頂點（element）數量：
     const numElements = (
-      attribs.position.length / attribs.position.numComponents
+      vertexDataArrays.position.length / vertexDataArrays.position.numComponents
     );
 
     const buffers = {};
@@ -122,7 +122,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.position);
     gl.vertexAttribPointer(
       attributes.position,
-      attribs.position.numComponents, // size
+      vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -131,12 +131,12 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.position),
+      new Float32Array(vertexDataArrays.position),
       gl.STATIC_DRAW,
     );
 
     objects.sphere = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       buffers,
     };
   }
@@ -224,7 +224,7 @@ function createModelBufferArrays() {
 
   return {
     numElements: a_position.length / 3,
-    attribs: {
+    vertexDataArrays: {
       a_position, a_color,
     },
   };

@@ -96,10 +96,10 @@ async function setup() {
   const objects = {};
 
   { // sphere
-    const attribs = twgl.primitives.deindexVertices(
+    const vertexDataArrays = twgl.primitives.deindexVertices(
       twgl.primitives.createSphereVertices(1, 32, 32)
     );
-    const numElements = attribs.position.length / attribs.position.numComponents;
+    const numElements = vertexDataArrays.position.length / vertexDataArrays.position.numComponents;
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
@@ -112,7 +112,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.position);
     gl.vertexAttribPointer(
       attributes.position,
-      attribs.position.numComponents, // size
+      vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -121,7 +121,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.position),
+      new Float32Array(vertexDataArrays.position),
       gl.STATIC_DRAW,
     );
 
@@ -132,7 +132,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.texcoord);
     gl.vertexAttribPointer(
       attributes.texcoord,
-      attribs.texcoord.numComponents, // size
+      vertexDataArrays.texcoord.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -141,7 +141,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.texcoord),
+      new Float32Array(vertexDataArrays.texcoord),
       gl.STATIC_DRAW,
     );
 
@@ -152,7 +152,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.normal);
     gl.vertexAttribPointer(
       attributes.normal,
-      attribs.normal.numComponents, // size
+      vertexDataArrays.normal.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -161,21 +161,21 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.normal),
+      new Float32Array(vertexDataArrays.normal),
       gl.STATIC_DRAW,
     );
 
     objects.sphere = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       vao, buffers,
     };
   }
 
   { // ground
-    const attribs = twgl.primitives.deindexVertices(
+    const vertexDataArrays = twgl.primitives.deindexVertices(
       twgl.primitives.createPlaneVertices()
     );
-    const numElements = attribs.position.length / attribs.position.numComponents;
+    const numElements = vertexDataArrays.position.length / vertexDataArrays.position.numComponents;
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
@@ -188,7 +188,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.position);
     gl.vertexAttribPointer(
       attributes.position,
-      attribs.position.numComponents, // size
+      vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -197,7 +197,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.position),
+      new Float32Array(vertexDataArrays.position),
       gl.STATIC_DRAW,
     );
 
@@ -208,7 +208,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.texcoord);
     gl.vertexAttribPointer(
       attributes.texcoord,
-      attribs.texcoord.numComponents, // size
+      vertexDataArrays.texcoord.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -217,7 +217,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.texcoord),
+      new Float32Array(vertexDataArrays.texcoord),
       gl.STATIC_DRAW,
     );
 
@@ -228,7 +228,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.normal);
     gl.vertexAttribPointer(
       attributes.normal,
-      attribs.normal.numComponents, // size
+      vertexDataArrays.normal.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -237,12 +237,12 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.normal),
+      new Float32Array(vertexDataArrays.normal),
       gl.STATIC_DRAW,
     );
 
     objects.ground = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       vao, buffers,
     };
   }
