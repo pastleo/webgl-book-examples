@@ -90,6 +90,7 @@ async function main() {
     gl.NEAREST,
   );
 
+  // gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T 使用重複圖案的渲染方式
   gl.texParameteri(
     gl.TEXTURE_2D,
     gl.TEXTURE_WRAP_S,

@@ -47,6 +47,7 @@ async function setup() {
   const uniforms = {
     resolution: gl.getUniformLocation(program, 'u_resolution'),
     texture: gl.getUniformLocation(program, 'u_texture'),
+    // 平移量變數
     offset: gl.getUniformLocation(program, 'u_offset'),
   };
 
@@ -90,6 +91,7 @@ async function setup() {
 
   gl.bufferData(
     gl.ARRAY_BUFFER,
+    // 調整輸入的頂點座標，讓一開始圖片在 (0, 0) 的位置
     new Float32Array([
       0, 0, // A
       150, 0, // B
@@ -138,9 +140,9 @@ async function setup() {
     buffers, textures,
     state: {
       texture: 0,
-      offset: [0, 0],
-      direction: [Math.cos(directionDeg), Math.sin(directionDeg)],
-      speed: 0.08,
+      offset: [0, 0], // 位置
+      direction: [Math.cos(directionDeg), Math.sin(directionDeg)], // 移動方向
+      speed: 0.08, // 預設速度
     },
     time: 0,
   };
@@ -172,15 +174,18 @@ function render(app) {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
+// 隨著時間更新、重畫的迴圈
 function loop(app, now = 0) {
   const { state, gl } = app;
-  const timeDiff = now - app.time;
+  const timeDiff = now - app.time; // 計算這次畫面更新與上次更新之間的時間差
   app.time = now;
 
+  // 更新 offset
   state.offset = state.offset.map(
     (v, i) => v + state.direction[i] * timeDiff * state.speed
   );
-
+ 
+  // 碰撞測試
   if (state.offset[0] + 150 > gl.canvas.width) {
     state.direction[0] *= -1;
     state.offset[0] = gl.canvas.width - 150;
@@ -197,7 +202,9 @@ function loop(app, now = 0) {
     state.offset[1] = 0;
   }
 
+  // 呼叫 render() 重畫畫面
   render(app);
+  // 呼叫 requestAnimationFrame 並傳入一個匿名函式
   requestAnimationFrame(now => loop(app, now));
 }
 
@@ -206,6 +213,7 @@ async function main() {
   window.app = app;
   window.gl = app.gl;
 
+  // 監聽 input 事件
   const controlsForm = document.getElementById('controls');
   controlsForm.addEventListener('input', () => {
     const formData = new FormData(controlsForm);
