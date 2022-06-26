@@ -51,7 +51,7 @@ async function setup() {
   const objects = {};
 
   { // pModel, P 形狀的物件
-    const { attribs, numElements } = createModelBufferArrays();
+    const { vertexDataArrays, numElements } = createModelBufferArrays();
     const buffers = {}; // pModel 專用的 buffers
 
     // 產生 pModel 專屬的 VAO 『工作空間』
@@ -75,7 +75,7 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.a_position),
+      new Float32Array(vertexDataArrays.a_position),
       gl.STATIC_DRAW,
     );
 
@@ -95,23 +95,23 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.a_color),
+      new Float32Array(vertexDataArrays.a_color),
       gl.STATIC_DRAW,
     );
 
     objects.pModel = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       vao, buffers,
     };
   }
 
   { // sphere, 球體
-    const attribs = twgl.primitives.deindexVertices(
+    const vertexDataArrays = twgl.primitives.deindexVertices(
       twgl.primitives.createSphereVertices(10, 32, 32)
     );
 
     const numElements = (
-      attribs.position.length / attribs.position.numComponents
+      vertexDataArrays.position.length / vertexDataArrays.position.numComponents
     );
 
     // 產生 sphere 專屬的 VAO 『工作空間』
@@ -128,7 +128,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.position);
     gl.vertexAttribPointer(
       attributes.position,
-      attribs.position.numComponents, // size
+      vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -137,21 +137,21 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.position),
+      new Float32Array(vertexDataArrays.position),
       gl.STATIC_DRAW,
     );
 
     objects.sphere = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       vao, buffers,
     };
   }
 
   { // ground
-    const attribs = twgl.primitives.deindexVertices(
+    const vertexDataArrays = twgl.primitives.deindexVertices(
       twgl.primitives.createPlaneVertices(1, 1)
     );
-    const numElements = attribs.position.length / attribs.position.numComponents;
+    const numElements = vertexDataArrays.position.length / vertexDataArrays.position.numComponents;
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
@@ -164,7 +164,7 @@ async function setup() {
     gl.enableVertexAttribArray(attributes.position);
     gl.vertexAttribPointer(
       attributes.position,
-      attribs.position.numComponents, // size
+      vertexDataArrays.position.numComponents, // size
       gl.FLOAT, // type
       false, // normalize
       0, // stride
@@ -173,12 +173,12 @@ async function setup() {
 
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array(attribs.position),
+      new Float32Array(vertexDataArrays.position),
       gl.STATIC_DRAW,
     );
 
     objects.ground = {
-      attribs, numElements,
+      vertexDataArrays, numElements,
       vao, buffers,
     };
   }
@@ -266,7 +266,7 @@ function createModelBufferArrays() {
 
   return {
     numElements: a_position.length / 3,
-    attribs: {
+    vertexDataArrays: {
       a_position, a_color,
     },
   };
