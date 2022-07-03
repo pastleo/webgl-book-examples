@@ -8,15 +8,24 @@ in vec2 a_texcoord;
 in vec3 a_normal;
 
 uniform mat4 u_matrix;
+uniform mat4 u_worldMatrix;
 uniform mat4 u_normalMatrix;
+uniform vec3 u_worldViewerPosition;
 
 out vec2 v_texcoord;
 out vec3 v_normal;
+out vec3 v_surfaceToViewer;
 
 void main() {
   gl_Position = u_matrix * a_position;
   v_texcoord = vec2(a_texcoord.x, 1.0 - a_texcoord.y);
   v_normal = mat3(u_normalMatrix) * a_normal;
+
+  // 算出 頂點、表面 座標位置
+  vec3 worldPosition = (u_worldMatrix * a_position).xyz;
+
+  // 算出 表面到相機 方向向量
+  v_surfaceToViewer = u_worldViewerPosition - worldPosition;
 }
 `;
 
@@ -25,10 +34,13 @@ precision highp float;
 
 in vec2 v_texcoord;
 in vec3 v_normal;
+in vec3 v_surfaceToViewer;
 
 uniform vec3 u_color;
 uniform sampler2D u_texture;
 uniform vec3 u_lightDir;
+uniform vec3 u_specular;
+uniform float u_specularExponent;
 
 out vec4 outColor;
 
@@ -40,7 +52,22 @@ void main() {
 
   float colorLight = clamp(dot(surfaceToLightDir, normal), 0.0, 1.0);
 
-  outColor = vec4(color * colorLight, 1);
+  // 確保表面位置到相機方向為單位向量
+  vec3 surfaceToViewerDirection = normalize(v_surfaceToViewer);
+
+  // 『中間向量』
+  vec3 halfVector = normalize(surfaceToLightDir + surfaceToViewerDirection);
+
+  // 反射光亮度
+  float specularBrightness = pow(
+    clamp(dot(halfVector, normal), 0.0, 1.0), u_specularExponent
+  );
+
+  outColor = vec4(
+    color * colorLight +
+    u_specular * specularBrightness,
+    1
+  );
 }
 `;
 
@@ -116,6 +143,9 @@ async function setup() {
       cameraVelocity: [0, 0, 0],
       sphereScaleX: 1,
       lightDir: [0, -1, 0],
+      specular: [1, 1, 1],
+      sphereSpecularExponent: 40,
+      groundSpecularExponent: 100,
     },
     time: 0,
   };
@@ -143,7 +173,9 @@ function render(app) {
   );
 
   twgl.setUniforms(programInfo, {
+    u_worldViewerPosition: state.cameraPosition,
     u_lightDir: state.lightDir,
+    u_specular: state.specular,
   });
 
   { // sphere
@@ -156,9 +188,11 @@ function render(app) {
 
     twgl.setUniforms(programInfo, {
       u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+      u_worldMatrix: worldMatrix,
       u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
       u_color: [0, 0, 0],
       u_texture: textures.steel,
+      u_specularExponent: state.sphereSpecularExponent,
     });
 
     twgl.drawBufferInfo(gl, objects.sphere.bufferInfo);
@@ -174,9 +208,11 @@ function render(app) {
 
     twgl.setUniforms(programInfo, {
       u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+      u_worldMatrix: worldMatrix,
       u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
       u_color: [0, 0, 0],
       u_texture: textures.wood,
+      u_specularExponent: state.groundSpecularExponent,
     });
 
     twgl.drawBufferInfo(gl, objects.ground.bufferInfo);
@@ -213,6 +249,12 @@ async function main() {
     app.state.lightDir[2] = -1 * Math.sin(lightRotXRad);
 
     app.state.sphereScaleX = parseFloat(formData.get('sphere-scale-x'));
+
+    // 將 input 的 specular 顏色色票字串轉換成 RGB 三個元素的陣列
+    app.state.specular = formData.get('specular').match(/#(\w{2})(\w{2})(\w{2})/).slice(1,4).map(c => parseInt(c, 16) / 256);
+
+    app.state.sphereSpecularExponent = parseFloat(formData.get('sphere-specular-exponent'));
+    app.state.groundSpecularExponent = parseFloat(formData.get('ground-specular-exponent'));
   });
 
   document.addEventListener('keydown', event => {
