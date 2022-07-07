@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>04-lighting</title>
+</head>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+  #canvas {
+    width: 100%;
+    height: 100%;
+  }
+  #controls {
+    position: fixed;
+    top: 0;
+    right: 0;
+    margin: 1rem;
+  }
+  .py-1 {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+</style>
+<body>
+  <canvas id="canvas"></canvas>
+  <form id="controls">
+    <div class="py-1">
+      <label for="light-pos-x">lightRotX</label>
+      <input
+        type="range" id="light-pos-x" name="light-pos-x"
+        min="-10" max="10" value="0" step="0.1"
+      >
+    </div>
+    <div class="py-1">
+      <label for="light-pos-y">lightRotY</label>
+      <input
+        type="range" id="light-pos-y" name="light-pos-y"
+        min="-10" max="10" value="2" step="0.1"
+      >
+    </div>
+    <div class="py-1">
+      <label for="light-pos-z">lightRotZ</label>
+      <input
+        type="range" id="light-pos-z" name="light-pos-z"
+        min="-10" max="10" value="0" step="0.1"
+      >
+    </div>
+    <div class="py-1">
+      <label for="sphere-scale-x">sphereScaleX</label>
+      <input
+        type="range" id="sphere-scale-x" name="sphere-scale-x"
+        min="0" max="10" value="1" step="0.01"
+      >
+    </div>
+    <div class="py-1">
+      <label for="sphere-specular-exponent">sphereSpecularExponent</label>
+      <input
+        type="range" id="sphere-specular-exponent" name="sphere-specular-exponent"
+        min="1" max="300" value="40"
+      >
+    </div>
+    <div class="py-1">
+      <label for="ground-specular-exponent">groundSpecularExponent</label>
+      <input
+        type="range" id="ground-specular-exponent" name="ground-specular-exponent"
+        min="1" max="300" value="100"
+      >
+    </div>
+    <div class="py-1">
+      <label for="specular">specular</label>
+      <input
+        type="color" id="specular" name="specular"
+        value="#ffffff"
+      >
+    </div>
+  </form>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
