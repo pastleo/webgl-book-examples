@@ -160,6 +160,7 @@ function render(app) {
 
   gl.useProgram(program);
 
+  // 平移 state.offset * 旋轉 state.rotation * 縮放 state.scale * 平移 state.translate
   const viewMatrix = matrix3.projection(gl.canvas.width, gl.canvas.height);
 
   // 平移 state.offset * 旋轉 state.rotation * 縮放 state.scale * 平移 state.translate

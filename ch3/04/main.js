@@ -238,6 +238,7 @@ function render(app) {
   gl.drawArrays(gl.TRIANGLES, 0, modelBufferArrays.numElements);
 }
 
+// 更新 cameraPosition
 function startLoop(app, now = 0) {
   const timeDiff = now - app.time;
   app.time = now;
@@ -301,17 +302,20 @@ async function main() {
 }
 main();
 
+// 指標事件：滑鼠以及觸控事件
 function handlePointerDown(app, touchOrMouseEvent) {
   const x = touchOrMouseEvent.pageX - app.gl.canvas.width / 2;
   const y = touchOrMouseEvent.pageY - app.gl.canvas.height / 2;
-
+  // 使 x, y 以畫面中央為原點
   if (x * x > y * y) {
+    // x 絕對值大於 y，向左或向右移動相機
     if (x > 0) {
       app.state.cameraVelocity[0] = 0.5;
     } else {
       app.state.cameraVelocity[0] = -0.5;
     }
   } else {
+     // y 絕對值大於 x，向上或向下移動相機
     if (y < 0) {
       app.state.cameraVelocity[1] = 0.5;
     } else {
@@ -320,12 +324,14 @@ function handlePointerDown(app, touchOrMouseEvent) {
   }
 }
 
+// 收到 mouseup、touchend 事件時，重設相機速度
 function handlePointerUp(app) {
   app.state.cameraVelocity[0] = 0;
   app.state.cameraVelocity[1] = 0;
   app.state.cameraVelocity[2] = 0;
 }
 
+// 查看按下、放開的按鍵，進而修改相機移動速度，使鍵盤 WASD 或上下左右控制相機之位置
 function handleKeyDown(app, event) {
   switch (event.code) {
     case 'KeyA':
@@ -347,6 +353,7 @@ function handleKeyDown(app, event) {
   }
 }
 
+ // 查看放開的按鈕，來決定重設 x 還是 y 方向的移動
 function handleKeyUp(app, event) {
   switch (event.code) {
     case 'KeyA':
