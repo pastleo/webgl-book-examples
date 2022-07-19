@@ -1,4 +1,5 @@
 import { createShader, createProgram, loadImage } from '../../lib/utils.js';
+// 導入 matrix3 工具箱
 import { matrix3 } from '../../lib/matrix.js';
 
 const vertexShaderSource = `#version 300 es
@@ -160,6 +161,8 @@ function render(app) {
   gl.useProgram(program);
 
   const viewMatrix = matrix3.projection(gl.canvas.width, gl.canvas.height);
+
+  // 平移 state.offset * 旋轉 state.rotation * 縮放 state.scale * 平移 state.translate
   const worldMatrix = matrix3.multiply(
     matrix3.translate(...state.offset),
     matrix3.rotate(state.rotation),
@@ -190,7 +193,8 @@ function loop(app, now = 0) {
   state.offset = state.offset.map(
     (v, i) => v + state.direction[i] * timeDiff * state.speed
   );
-
+  
+  // 碰撞測試
   if (state.offset[0] > gl.canvas.width) {
     state.direction[0] *= -1;
     state.offset[0] = gl.canvas.width;
