@@ -238,11 +238,11 @@ function render(app) {
   gl.drawArrays(gl.TRIANGLES, 0, modelBufferArrays.numElements);
 }
 
-// 更新 cameraPosition
 function startLoop(app, now = 0) {
   const timeDiff = now - app.time;
   app.time = now;
 
+  // 更新 cameraPosition
   app.state.cameraPosition[0] += app.state.cameraVelocity[0] * timeDiff;
   app.state.cameraPosition[1] += app.state.cameraVelocity[1] * timeDiff;
   app.state.cameraPosition[2] += app.state.cameraVelocity[2] * timeDiff;
@@ -304,9 +304,10 @@ main();
 
 // 指標事件：滑鼠以及觸控事件
 function handlePointerDown(app, touchOrMouseEvent) {
+  // 使 x, y 以畫面中央為原點
   const x = touchOrMouseEvent.pageX - app.gl.canvas.width / 2;
   const y = touchOrMouseEvent.pageY - app.gl.canvas.height / 2;
-  // 使 x, y 以畫面中央為原點
+
   if (x * x > y * y) {
     // x 絕對值大於 y，向左或向右移動相機
     if (x > 0) {

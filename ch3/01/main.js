@@ -89,7 +89,7 @@ async function setup() {
     gl,
     program, attributes, uniforms,
     buffers, modelBufferArrays,
-    state: {  // 初始 tranform 值
+    state: { // 初始 tranform 狀態
       projectionZ: 400,
       translate: [150, 100, 0],
       rotate: [degToRad(30), degToRad(30), degToRad(0)],
@@ -99,7 +99,7 @@ async function setup() {
   };
 }
 
-//  create attribute buffer 
+// create attribute buffer 
 function createModelBufferArrays() {
   // positions
   const a = 40, b = 200, c = 60, d = 45;
@@ -173,7 +173,7 @@ function createModelBufferArrays() {
   };
 }
 
-// 接受四個頂點座標，產生兩個三角形的工具
+// 產生兩個三角形組成一個長方形
 function rectVertices(a, b, c, d) {
   return [
     ...a, ...b, ...c,
