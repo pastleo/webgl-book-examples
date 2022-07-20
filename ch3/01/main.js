@@ -89,7 +89,7 @@ async function setup() {
     gl,
     program, attributes, uniforms,
     buffers, modelBufferArrays,
-    state: {
+    state: { // 初始 tranform 狀態
       projectionZ: 400,
       translate: [150, 100, 0],
       rotate: [degToRad(30), degToRad(30), degToRad(0)],
@@ -99,6 +99,7 @@ async function setup() {
   };
 }
 
+// create attribute buffer
 function createModelBufferArrays() {
   // positions
   const a = 40, b = 200, c = 60, d = 45;
@@ -172,6 +173,7 @@ function createModelBufferArrays() {
   };
 }
 
+// 產生兩個三角形組成一個長方形
 function rectVertices(a, b, c, d) {
   return [
     ...a, ...b, ...c,
@@ -179,10 +181,12 @@ function rectVertices(a, b, c, d) {
   ];
 }
 
+// 指定長方形色塊的顏色
 function rectColor(color) {
   return Array(6).fill(color).flat();
 }
 
+// 產生隨機顏色
 function randomColor() {
   return [Math.random(), Math.random(), Math.random()];
 }
@@ -200,10 +204,13 @@ function render(app) {
   gl.viewport(0, 0, canvas.width, canvas.height);
 
   gl.useProgram(program);
-
+  
+  // 只繪製正面面向觀看者的三角形
   gl.enable(gl.CULL_FACE);
+  // 深度測試 
   gl.enable(gl.DEPTH_TEST);
 
+  // orthogonal projection
   const viewMatrix = matrix4.projection(gl.canvas.width, gl.canvas.height, state.projectionZ);
   const worldMatrix = matrix4.multiply(
     matrix4.translate(...state.translate),

@@ -203,7 +203,8 @@ function render(app) {
 
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
-
+  
+  // perspective projection
   const viewMatrix = matrix4.perspective(
     state.fieldOfView,
     gl.canvas.width / gl.canvas.height, // aspect
