@@ -99,7 +99,7 @@ async function setup() {
   };
 }
 
-// create attribute buffer 
+// create attribute buffer
 function createModelBufferArrays() {
   // positions
   const a = 40, b = 200, c = 60, d = 45;
