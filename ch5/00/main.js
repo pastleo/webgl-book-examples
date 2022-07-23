@@ -1,4 +1,5 @@
 import * as twgl from 'https://unpkg.com/twgl.js@4/dist/4.x/twgl-full.module.js';
+import listenToInputs, { update as inputUpdate } from '../../lib/input.js';
 import { loadImage, degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
@@ -11,11 +12,9 @@ uniform mat4 u_matrix;
 uniform mat4 u_worldMatrix;
 uniform mat4 u_normalMatrix;
 uniform vec3 u_worldViewerPosition;
-uniform vec3 u_worldLightPosition;
 
 out vec2 v_texcoord;
 out vec3 v_surfaceToViewer;
-out vec3 v_surfaceToLight;
 out mat3 v_normalMatrix;
 
 void main() {
@@ -36,8 +35,6 @@ void main() {
 
   vec3 worldPosition = (u_worldMatrix * a_position).xyz;
   v_surfaceToViewer = u_worldViewerPosition - worldPosition;
-
-  v_surfaceToLight = u_worldLightPosition - worldPosition;
 }
 `;
 
@@ -49,24 +46,26 @@ in vec3 v_surfaceToViewer;
 in vec3 v_surfaceToLight;
 in mat3 v_normalMatrix;
 
-uniform vec3 u_color;
-uniform sampler2D u_texture;
+uniform sampler2D u_normalMap;
+uniform vec3 u_diffuse;
+uniform sampler2D u_diffuseMap;
+uniform vec3 u_lightDir;
 uniform vec3 u_specular;
 uniform float u_specularExponent;
 uniform vec3 u_emissive;
-uniform sampler2D u_normalMap;
+uniform vec3 u_ambient;
 
 out vec4 outColor;
 
 void main() {
-  vec3 color = u_color + texture(u_texture, v_texcoord).rgb;
-
   vec3 normal = texture(u_normalMap, v_texcoord).xyz * 2.0 - 1.0;
   normal = normalize(v_normalMatrix * normal);
 
-  vec3 surfaceToLightDir = normalize(v_surfaceToLight);
+  vec3 diffuse = u_diffuse + texture(u_diffuseMap, v_texcoord).rgb;
 
-  float colorLight = clamp(dot(surfaceToLightDir, normal), 0.0, 1.0);
+  vec3 surfaceToLightDir = normalize(-u_lightDir);
+
+  float diffuseLight = clamp(dot(surfaceToLightDir, normal), 0.0, 1.0);
 
   vec3 surfaceToViewerDirection = normalize(v_surfaceToViewer);
 
@@ -75,16 +74,19 @@ void main() {
     clamp(dot(halfVector, normal), 0.0, 1.0), u_specularExponent
   );
 
+  vec3 ambient = u_ambient * diffuse;
+
   outColor = vec4(
-    color * colorLight +
-    u_specular * specularBrightness +
-    u_emissive,
+    clamp(
+      diffuse * diffuseLight +
+      u_specular * specularBrightness +
+      u_emissive,
+      ambient, vec3(1, 1, 1)
+    ),
     1
   );
 }
 `;
-
-const CAMERA_MOVE_SPEED = 0.005;
 
 async function setup() {
   const canvas = document.getElementById('canvas');
@@ -96,10 +98,8 @@ async function setup() {
 
   const textures = Object.fromEntries(
     await Promise.all(Object.entries({
-      wood: '/assets/woodfloor.webp',
-      steel: '/assets/steel.webp',
-      woodNormal: '/assets/woodfloor_normal.webp',
-      steelNormal: '/assets/steel_normal.webp',
+      scale: '/assets/scale_diffuse.webp',
+      scaleNormal: '/assets/scale_normal.webp',
     }).map(async ([name, url]) => {
       const image = await loadImage(url);
       const texture = gl.createTexture();
@@ -182,13 +182,10 @@ async function setup() {
     textures, objects,
     state: {
       fieldOfView: degToRad(45),
-      cameraPosition: [0, 0, 8],
-      cameraVelocity: [0, 0, 0],
-      sphereScaleX: 1,
-      lightPosition: [0, 2, 0],
-      specular: [1, 1, 1],
-      sphereSpecularExponent: 40,
-      groundSpecularExponent: 100,
+      cameraRotationXY: [degToRad(-45), 0],
+      cameraDistance: 15,
+      cameraViewing: [0, 0, 0],
+      lightDir: [0, -1, 0],
     },
     time: 0,
   };
@@ -208,17 +205,23 @@ function render(app) {
 
   gl.useProgram(programInfo.program);
 
-  const cameraMatrix = matrix4.lookAt(state.cameraPosition, [0, 0, 0], [0, 1, 0]);
+  const cameraMatrix = matrix4.multiply(
+    matrix4.translate(...state.cameraViewing),
+    matrix4.yRotate(state.cameraRotationXY[1]),
+    matrix4.xRotate(state.cameraRotationXY[0]),
+    matrix4.translate(0, 0, state.cameraDistance),
+  );
 
   const viewMatrix = matrix4.multiply(
-    matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 200),
+    matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 2000),
     matrix4.inverse(cameraMatrix),
   );
 
   twgl.setUniforms(programInfo, {
-    u_worldViewerPosition: state.cameraPosition,
-    u_worldLightPosition: state.lightPosition,
-    u_specular: state.specular,
+    u_worldViewerPosition: cameraMatrix.slice(12, 15),
+    u_lightDir: state.lightDir,
+    u_specular: [1, 1, 1],
+    u_ambient: [0.4, 0.4, 0.4],
   });
 
   { // sphere
@@ -226,18 +229,18 @@ function render(app) {
 
     const worldMatrix = matrix4.multiply(
       matrix4.translate(0, 0, 0),
-      matrix4.scale(state.sphereScaleX, 1, 1),
+      matrix4.scale(1, 1, 1),
     );
 
     twgl.setUniforms(programInfo, {
       u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
       u_worldMatrix: worldMatrix,
       u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
-      u_color: [0, 0, 0],
-      u_texture: textures.steel,
-      u_specularExponent: state.sphereSpecularExponent,
+      u_normalMap: textures.scaleNormal,
+      u_diffuse: [0, 0, 0],
+      u_diffuseMap: textures.scale,
+      u_specularExponent: 40,
       u_emissive: [0.15, 0.15, 0.15],
-      u_normalMap: textures.steelNormal,
     });
 
     twgl.drawBufferInfo(gl, objects.sphere.bufferInfo);
@@ -255,36 +258,14 @@ function render(app) {
       u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
       u_worldMatrix: worldMatrix,
       u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
-      u_color: [0, 0, 0],
-      u_texture: textures.wood,
-      u_specularExponent: state.groundSpecularExponent,
+      u_normalMap: textures.nullNormal,
+      u_diffuse: [0, 0, 0],
+      u_diffuseMap: textures.null,
+      u_specularExponent: 200,
       u_emissive: [0, 0, 0],
-      u_normalMap: textures.woodNormal,
     });
 
     twgl.drawBufferInfo(gl, objects.ground.bufferInfo);
-  }
-
-  { // light bulb
-    gl.bindVertexArray(objects.sphere.vao);
-
-    const worldMatrix = matrix4.multiply(
-      matrix4.translate(...state.lightPosition),
-      matrix4.scale(0.1, 0.1, 0.1),
-    );
-
-    twgl.setUniforms(programInfo, {
-      u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
-      u_worldMatrix: worldMatrix,
-      u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
-      u_color: [0, 0, 0],
-      u_texture: textures.null,
-      u_specularExponent: 1000,
-      u_emissive: [1, 1, 0],
-      u_normalMap: textures.nullNormal,
-    });
-
-    twgl.drawBufferInfo(gl, objects.sphere.bufferInfo);
   }
 }
 
@@ -292,9 +273,13 @@ function startLoop(app, now = 0) {
   const timeDiff = now - app.time;
   app.time = now;
 
-  app.state.cameraPosition[0] += app.state.cameraVelocity[0] * timeDiff;
-  app.state.cameraPosition[1] += app.state.cameraVelocity[1] * timeDiff;
-  app.state.cameraPosition[2] += app.state.cameraVelocity[2] * timeDiff;
+  inputUpdate(app.input, app.state);
+
+  const lightRotXRad = Math.sin(now * 0.00037) * degToRad(45);
+  const lightRotZRad = Math.sin(now * 0.00041) * degToRad(45);
+  app.state.lightDir[0] = -1 * Math.cos(lightRotXRad) * Math.sin(lightRotZRad);
+  app.state.lightDir[1] = -1 * Math.cos(lightRotXRad) * Math.cos(lightRotZRad);
+  app.state.lightDir[2] = -1 * Math.sin(lightRotXRad);
 
   render(app, timeDiff);
   requestAnimationFrame(now => startLoop(app, now));
@@ -305,105 +290,8 @@ async function main() {
   window.app = app;
   window.gl = app.gl;
 
-  const controlsForm = document.getElementById('controls');
-  controlsForm.addEventListener('input', () => {
-    const formData = new FormData(controlsForm);
-
-    app.state.lightPosition[0] = parseFloat(formData.get('light-pos-x'));
-    app.state.lightPosition[1] = parseFloat(formData.get('light-pos-y'));
-    app.state.lightPosition[2] = parseFloat(formData.get('light-pos-z'));
-
-    app.state.sphereScaleX = parseFloat(formData.get('sphere-scale-x'));
-
-    app.state.specular = formData.get('specular').match(/#(\w{2})(\w{2})(\w{2})/).slice(1,4).map(c => parseInt(c, 16) / 256);
-
-    app.state.sphereSpecularExponent = parseFloat(formData.get('sphere-specular-exponent'));
-    app.state.groundSpecularExponent = parseFloat(formData.get('ground-specular-exponent'));
-  });
-
-  document.addEventListener('keydown', event => {
-    handleKeyDown(app, event);
-  });
-  document.addEventListener('keyup', event => {
-    handleKeyUp(app, event);
-  });
-
-  app.gl.canvas.addEventListener('mousedown', event => {
-    handlePointerDown(app, event);
-  });
-  app.gl.canvas.addEventListener('mouseup', () => {
-    handlePointerUp(app);
-  });
-  app.gl.canvas.addEventListener('touchstart', event => {
-    handlePointerDown(app, event.touches[0]);
-  });
-  app.gl.canvas.addEventListener('touchend', () => {
-    handlePointerUp(app);
-  });
+  app.input = listenToInputs(app.gl.canvas, app.state);
 
   startLoop(app);
 }
 main();
-
-function handleKeyDown(app, event) {
-  switch (event.code) {
-    case 'KeyA':
-    case 'ArrowLeft':
-      app.state.cameraVelocity[0] = -CAMERA_MOVE_SPEED;
-      break;
-    case 'KeyD':
-    case 'ArrowRight':
-      app.state.cameraVelocity[0] = CAMERA_MOVE_SPEED;
-      break;
-    case 'KeyW':
-    case 'ArrowUp':
-      app.state.cameraVelocity[1] = CAMERA_MOVE_SPEED;
-      break;
-    case 'KeyS':
-    case 'ArrowDown':
-      app.state.cameraVelocity[1] = -CAMERA_MOVE_SPEED;
-      break;
-  }
-}
-
-function handleKeyUp(app, event) {
-  switch (event.code) {
-    case 'KeyA':
-    case 'ArrowLeft':
-    case 'KeyD':
-    case 'ArrowRight':
-      app.state.cameraVelocity[0] = 0;
-      break;
-    case 'KeyW':
-    case 'ArrowUp':
-    case 'KeyS':
-    case 'ArrowDown':
-      app.state.cameraVelocity[1] = 0;
-      break;
-  }
-}
-
-function handlePointerDown(app, touchOrMouseEvent) {
-  const x = touchOrMouseEvent.pageX - app.gl.canvas.width / 2;
-  const y = touchOrMouseEvent.pageY - app.gl.canvas.height / 2;
-
-  if (x * x > y * y) {
-    if (x > 0) {
-      app.state.cameraVelocity[0] = CAMERA_MOVE_SPEED;
-    } else {
-      app.state.cameraVelocity[0] = -CAMERA_MOVE_SPEED;
-    }
-  } else {
-    if (y < 0) {
-      app.state.cameraVelocity[1] = CAMERA_MOVE_SPEED;
-    } else {
-      app.state.cameraVelocity[1] = -CAMERA_MOVE_SPEED;
-    }
-  }
-}
-
-function handlePointerUp(app) {
-  app.state.cameraVelocity[0] = 0;
-  app.state.cameraVelocity[1] = 0;
-  app.state.cameraVelocity[2] = 0;
-}
