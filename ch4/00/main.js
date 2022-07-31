@@ -1,4 +1,4 @@
-import * as twgl from 'https://unpkg.com/twgl.js@4/dist/4.x/twgl-full.module.js';
+import * as twgl from '../../lib/vendor/twgl-full.module.js';
 import { createShader, createProgram, loadImage, degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
