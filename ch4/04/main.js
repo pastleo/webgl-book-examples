@@ -50,6 +50,7 @@ async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
 
+  // 設定 attribute 的 prefix（前綴）
   twgl.setAttributePrefix('a_');
 
   const programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
