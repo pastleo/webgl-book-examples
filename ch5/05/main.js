@@ -3,10 +3,12 @@ import listenToInputs, { update as inputUpdate } from '../../lib/input.js';
 import { loadImage, degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
-const vertexShaderSource = `#version 300 es
-in vec4 a_position;
-in vec2 a_texcoord;
-in vec3 a_normal;
+const vertexShaderSource = `
+precision highp float;
+
+attribute vec4 a_position;
+attribute vec2 a_texcoord;
+attribute vec3 a_normal;
 
 uniform mat4 u_matrix;
 uniform mat4 u_worldMatrix;
@@ -15,12 +17,12 @@ uniform vec3 u_worldViewerPosition;
 uniform mat4 u_mirrorMatrix;
 uniform mat4 u_lightProjectionMatrix;
 
-out vec2 v_texcoord;
-out vec3 v_surfaceToViewer;
-out mat3 v_normalMatrix;
-out vec4 v_mirrorTexcoord;
-out float v_depth;
-out vec4 v_lightProjection;
+varying vec2 v_texcoord;
+varying vec3 v_surfaceToViewer;
+varying mat3 v_normalMatrix;
+varying vec4 v_mirrorTexcoord;
+varying float v_depth;
+varying vec4 v_lightProjection;
 
 void main() {
   gl_Position = u_matrix * a_position;
@@ -48,15 +50,15 @@ void main() {
 }
 `;
 
-const fragmentShaderSource = `#version 300 es
+const fragmentShaderSource = `
 precision highp float;
 
-in vec2 v_texcoord;
-in vec3 v_surfaceToViewer;
-in vec3 v_surfaceToLight;
-in mat3 v_normalMatrix;
-in vec4 v_mirrorTexcoord;
-in vec4 v_lightProjection;
+varying vec2 v_texcoord;
+varying vec3 v_surfaceToViewer;
+varying vec3 v_surfaceToLight;
+varying mat3 v_normalMatrix;
+varying vec4 v_mirrorTexcoord;
+varying vec4 v_lightProjection;
 
 uniform sampler2D u_normalMap;
 uniform vec3 u_diffuse;
@@ -69,23 +71,21 @@ uniform vec3 u_ambient;
 uniform bool u_useMirrorTexcoord;
 uniform sampler2D u_lightProjectionMap;
 
-out vec4 outColor;
-
 void main() {
   vec2 texcoord = u_useMirrorTexcoord ? (
     (v_mirrorTexcoord.xy / v_mirrorTexcoord.w) * 0.5 + 0.5
   ) : v_texcoord;
-  vec3 normal = texture(u_normalMap, texcoord).xyz * 2.0 - 1.0;
+  vec3 normal = texture2D(u_normalMap, texcoord).xyz * 2.0 - 1.0;
   normal = normalize(v_normalMatrix * normal);
 
   vec2 lightProjectionCoord = v_lightProjection.xy / v_lightProjection.w * 0.5 + 0.5;
   float lightToSurfaceDepth = v_lightProjection.z / v_lightProjection.w * 0.5 + 0.5;
-  float lightProjectedDepth = texture(
+  float lightProjectedDepth = texture2D(
     u_lightProjectionMap,
     lightProjectionCoord
   ).r;
 
-  vec3 diffuse = u_diffuse + texture(u_diffuseMap, texcoord).rgb;
+  vec3 diffuse = u_diffuse + texture2D(u_diffuseMap, texcoord).rgb;
 
   vec3 surfaceToLightDir = normalize(-u_lightDir);
 
@@ -105,7 +105,7 @@ void main() {
 
   vec3 ambient = u_ambient * diffuse;
 
-  outColor = vec4(
+  gl_FragColor = vec4(
     clamp(
       diffuse * diffuseLight +
       u_specular * specularBrightness +
@@ -117,21 +117,34 @@ void main() {
 }
 `;
 
-const depthFragmentShaderSource = `#version 300 es
+const depthFragmentShaderSource = `
 precision highp float;
 
-in float v_depth;
-
-out vec4 outColor;
+varying float v_depth;
 
 void main() {
-  outColor = vec4(v_depth, v_depth, v_depth, 1);
+  gl_FragColor = vec4(v_depth, v_depth, v_depth, 1);
 }
 `;
 
 async function setup() {
   const canvas = document.getElementById('canvas');
-  const gl = canvas.getContext('webgl2');
+  const gl = canvas.getContext('webgl');
+
+  const oesVaoExt = gl.getExtension('OES_vertex_array_object');
+  if (oesVaoExt) {
+    gl.createVertexArray = (...args) => oesVaoExt.createVertexArrayOES(...args);
+    gl.deleteVertexArray = (...args) => oesVaoExt.deleteVertexArrayOES(...args);
+    gl.isVertexArray = (...args) => oesVaoExt.isVertexArrayOES(...args);
+    gl.bindVertexArray = (...args) => oesVaoExt.bindVertexArrayOES(...args);
+  } else {
+    throw new Error('Your browser does not support WebGL ext: OES_vertex_array_object')
+  }
+
+  const webglDepthTexExt = gl.getExtension('WEBGL_depth_texture');
+  if (!webglDepthTexExt) {
+    throw new Error('Your browser does not support WebGL ext: WEBGL_depth_texture')
+  }
 
   twgl.setAttributePrefix('a_');
 
@@ -204,6 +217,7 @@ async function setup() {
   framebuffers.lightProjection = twgl.createFramebufferInfo(gl, [{
     attachmentPoint: gl.DEPTH_ATTACHMENT,
     internalFormat: gl.DEPTH_COMPONENT32F,
+    format: gl.DEPTH_COMPONENT,
     minMag: gl.NEAREST,
   }], 2048, 2048);
   textures.lightProjection = framebuffers.lightProjection.attachments[0];
