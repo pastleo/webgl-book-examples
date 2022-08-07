@@ -110,7 +110,7 @@ out vec4 outColor;
 void main() {
   outColor = vec4(v_depth, v_depth, v_depth, 1);
 }
-`
+`;
 
 async function setup() {
   const canvas = document.getElementById('canvas');
@@ -186,9 +186,7 @@ async function setup() {
 
   framebuffers.lightProjection = twgl.createFramebufferInfo(gl, [{
     attachmentPoint: gl.DEPTH_ATTACHMENT,
-    format: gl.DEPTH_COMPONENT,
     internalFormat: gl.DEPTH_COMPONENT32F,
-    type: gl.FLOAT,
     minMag: gl.NEAREST,
   }], 2048, 2048);
   textures.lightProjection = framebuffers.lightProjection.attachments[0];
