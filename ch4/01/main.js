@@ -372,6 +372,7 @@ async function main() {
   controlsForm.addEventListener('input', () => {
     const formData = new FormData(controlsForm);
 
+    // 轉成浮點數、再從角度轉成弧度
     const lightRotXRad = degToRad(parseFloat(formData.get('light-rot-x')));
     const lightRotZRad = degToRad(parseFloat(formData.get('light-rot-z')));
 
