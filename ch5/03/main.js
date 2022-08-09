@@ -18,6 +18,7 @@ out vec2 v_texcoord;
 out vec3 v_surfaceToViewer;
 out mat3 v_normalMatrix;
 out vec4 v_mirrorTexcoord;
+out float v_depth;
 
 void main() {
   gl_Position = u_matrix * a_position;
@@ -39,6 +40,8 @@ void main() {
   v_surfaceToViewer = u_worldViewerPosition - worldPosition.xyz;
 
   v_mirrorTexcoord = u_mirrorMatrix * worldPosition;
+
+  v_depth = gl_Position.z / gl_Position.w * 0.5 + 0.5;
 }
 `;
 
@@ -97,6 +100,18 @@ void main() {
 }
 `;
 
+const depthFragmentShaderSource = `#version 300 es
+precision highp float;
+
+in float v_depth;
+
+out vec4 outColor;
+
+void main() {
+  outColor = vec4(v_depth, v_depth, v_depth, 1);
+}
+`;
+
 async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
@@ -104,6 +119,7 @@ async function setup() {
   twgl.setAttributePrefix('a_');
 
   const programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
+  const depthProgramInfo = twgl.createProgramInfo(gl, [vertexShaderSource, depthFragmentShaderSource]);
 
   const textures = Object.fromEntries(
     await Promise.all(Object.entries({
@@ -168,6 +184,13 @@ async function setup() {
   );
   textures.mirror = framebuffers.mirror.attachments[0];
 
+  framebuffers.lightProjection = twgl.createFramebufferInfo(gl, [{
+    attachmentPoint: gl.DEPTH_ATTACHMENT,
+    internalFormat: gl.DEPTH_COMPONENT32F,
+    minMag: gl.NEAREST,
+  }], 2048, 2048);
+  textures.lightProjection = framebuffers.lightProjection.attachments[0];
+
   const objects = {};
 
   { // sphere
@@ -198,7 +221,7 @@ async function setup() {
 
   return {
     gl,
-    programInfo,
+    programInfo, depthProgramInfo,
     textures, framebuffers, objects,
     state: {
       fieldOfView: degToRad(45),
@@ -211,10 +234,9 @@ async function setup() {
   };
 }
 
-function renderSphere(app, viewMatrix) {
+function renderSphere(app, viewMatrix, programInfo) {
   const {
     gl,
-    programInfo,
     textures, objects,
   } = app;
 
@@ -239,10 +261,9 @@ function renderSphere(app, viewMatrix) {
   twgl.drawBufferInfo(gl, objects.sphere.bufferInfo);
 }
 
-function renderGround(app, viewMatrix, mirrorViewMatrix) {
+function renderGround(app, viewMatrix, mirrorViewMatrix, programInfo) {
   const {
     gl,
-    programInfo,
     textures, objects,
   } = app;
 
@@ -277,6 +298,7 @@ function render(app) {
   const {
     gl,
     programInfo,
+    depthProgramInfo,
     framebuffers,
     state,
   } = app;
@@ -307,6 +329,23 @@ function render(app) {
     matrix4.inverse(mirrorCameraMatrix),
   );
 
+  const lightProjectionViewMatrix = matrix4.multiply(
+    matrix4.translate(1, -1, 0),
+    matrix4.projection(20, 20, 10),
+    [ // shearing
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, Math.tan(state.lightRotationXY[0]), 1, 0,
+      0, 0, 0, 1,
+    ],
+    matrix4.inverse(
+      matrix4.multiply(
+        matrix4.yRotate(state.lightRotationXY[1]),
+        matrix4.xRotate(degToRad(90)),
+      )
+    ),
+  );
+
   twgl.setUniforms(programInfo, {
     u_worldViewerPosition: cameraMatrix.slice(12, 15),
     u_lightDir: [
@@ -322,7 +361,7 @@ function render(app) {
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  renderSphere(app, mirrorViewMatrix);
+  renderSphere(app, mirrorViewMatrix, programInfo);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -330,8 +369,10 @@ function render(app) {
   gl.canvas.height = gl.canvas.clientHeight;
   gl.viewport(0, 0, canvas.width, canvas.height);
 
-  renderGround(app, viewMatrix, mirrorViewMatrix);
-  renderSphere(app, viewMatrix);
+  gl.useProgram(depthProgramInfo.program);
+
+  renderGround(app, lightProjectionViewMatrix, mirrorViewMatrix, depthProgramInfo);
+  renderSphere(app, lightProjectionViewMatrix, depthProgramInfo);
 }
 
 function startLoop(app, now = 0) {

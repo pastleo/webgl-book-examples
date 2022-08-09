@@ -1,4 +1,4 @@
-import * as twgl from 'https://unpkg.com/twgl.js@4/dist/4.x/twgl-full.module.js';
+import * as twgl from '../../lib/vendor/twgl-full.module.js';
 import listenToInputs, { update as inputUpdate } from '../../lib/input.js';
 import { loadImage, degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
@@ -185,7 +185,7 @@ async function setup() {
       cameraRotationXY: [degToRad(-45), 0],
       cameraDistance: 15,
       cameraViewing: [0, 0, 0],
-      lightDir: [0, -1, 0],
+      lightRotationXY: [0, 0],
     },
     time: 0,
   };
@@ -219,7 +219,11 @@ function render(app) {
 
   twgl.setUniforms(programInfo, {
     u_worldViewerPosition: cameraMatrix.slice(12, 15),
-    u_lightDir: state.lightDir,
+    u_lightDir: [
+      -1 * Math.sin(state.lightRotationXY[0]) * Math.sin(state.lightRotationXY[1]),
+      -1 * Math.cos(state.lightRotationXY[0]),
+      -1 * Math.sin(state.lightRotationXY[0]) * Math.cos(state.lightRotationXY[1]),
+    ],
     u_specular: [1, 1, 1],
     u_ambient: [0.4, 0.4, 0.4],
   });
@@ -275,11 +279,8 @@ function startLoop(app, now = 0) {
 
   inputUpdate(app.input, app.state);
 
-  const lightRotXRad = Math.sin(now * 0.00037) * degToRad(45);
-  const lightRotZRad = Math.sin(now * 0.00041) * degToRad(45);
-  app.state.lightDir[0] = -1 * Math.cos(lightRotXRad) * Math.sin(lightRotZRad);
-  app.state.lightDir[1] = -1 * Math.cos(lightRotXRad) * Math.cos(lightRotZRad);
-  app.state.lightDir[2] = -1 * Math.sin(lightRotXRad);
+  app.state.lightRotationXY[0] = Math.sin(now * 0.00041) * degToRad(45);
+  app.state.lightRotationXY[1] = now * 0.00037;
 
   render(app, timeDiff);
   requestAnimationFrame(now => startLoop(app, now));
