@@ -303,8 +303,6 @@ function render(app) {
     state,
   } = app;
 
-  gl.useProgram(programInfo.program);
-
   const cameraMatrix = matrix4.multiply(
     matrix4.translate(...state.cameraViewing),
     matrix4.yRotate(state.cameraRotationXY[1]),
@@ -346,17 +344,6 @@ function render(app) {
     ),
   );
 
-  twgl.setUniforms(programInfo, {
-    u_worldViewerPosition: cameraMatrix.slice(12, 15),
-    u_lightDir: [
-      -1 * Math.sin(state.lightRotationXY[0]) * Math.sin(state.lightRotationXY[1]),
-      -1 * Math.cos(state.lightRotationXY[0]),
-      -1 * Math.sin(state.lightRotationXY[0]) * Math.cos(state.lightRotationXY[1]),
-    ],
-    u_specular: [1, 1, 1],
-    u_ambient: [0.4, 0.4, 0.4],
-  });
-
   { // lightProjection
     twgl.bindFramebufferInfo(gl, framebuffers.lightProjection);
 
@@ -368,12 +355,23 @@ function render(app) {
     renderSphere(app, lightProjectionViewMatrix, depthProgramInfo);
   }
 
+  gl.useProgram(programInfo.program);
+
+  twgl.setUniforms(programInfo, {
+    u_worldViewerPosition: cameraMatrix.slice(12, 15),
+    u_lightDir: [
+      -1 * Math.sin(state.lightRotationXY[0]) * Math.sin(state.lightRotationXY[1]),
+      -1 * Math.cos(state.lightRotationXY[0]),
+      -1 * Math.sin(state.lightRotationXY[0]) * Math.cos(state.lightRotationXY[1]),
+    ],
+    u_specular: [1, 1, 1],
+    u_ambient: [0.4, 0.4, 0.4],
+  });
+
   { // mirror
     twgl.bindFramebufferInfo(gl, framebuffers.mirror);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.useProgram(programInfo.program);
 
     renderSphere(app, mirrorViewMatrix, programInfo);
   }
@@ -383,8 +381,6 @@ function render(app) {
   gl.canvas.width = gl.canvas.clientWidth;
   gl.canvas.height = gl.canvas.clientHeight;
   gl.viewport(0, 0, canvas.width, canvas.height);
-
-  gl.useProgram(programInfo.program);
 
   renderGround(app, viewMatrix, mirrorViewMatrix, programInfo);
   renderSphere(app, viewMatrix, programInfo);
