@@ -110,7 +110,7 @@ void main() {
       diffuse * diffuseLight +
       u_specular * specularBrightness +
       u_emissive,
-      ambient, vec3(1, 1, 1)
+      ambient, vec3(1.0 - occlusion, 1.0 - occlusion, 1)
     ),
     1
   );
