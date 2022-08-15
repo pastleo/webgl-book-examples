@@ -98,8 +98,10 @@ void main() {
     clamp(dot(halfVector, normal), 0.0, 1.0), u_specularExponent
   );
 
-  float occulusion = smoothstep(0.01, 0.1, lightToSurfaceDepth - lightProjectedDepth);
-  diffuseLight *= 1.0 - occulusion;
+  float occlusion = smoothstep(0.01, 0.1, lightToSurfaceDepth - lightProjectedDepth);
+
+  diffuseLight *= 1.0 - occlusion;
+  specularBrightness *= 1.0 - clamp(occlusion * 2.0, 0.0, 1.0);
 
   vec3 ambient = u_ambient * diffuse;
 
@@ -297,6 +299,7 @@ function renderGround(app, viewMatrix, mirrorViewMatrix, programInfo) {
     u_diffuse: [0, 0, 0],
     u_diffuseMap: textures.mirror,
     u_specularExponent: 200,
+    u_emissive: [0, 0, 0],
     u_useMirrorTexcoord: true,
     u_mirrorMatrix: mirrorViewMatrix,
   });
@@ -316,8 +319,6 @@ function render(app) {
     framebuffers, textures,
     state,
   } = app;
-
-  gl.useProgram(programInfo.program);
 
   const cameraMatrix = matrix4.multiply(
     matrix4.translate(...state.cameraViewing),
@@ -360,6 +361,19 @@ function render(app) {
     ),
   );
 
+  { // lightProjection
+    twgl.bindFramebufferInfo(gl, framebuffers.lightProjection);
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.useProgram(depthProgramInfo.program);
+
+    renderGround(app, lightProjectionViewMatrix, mirrorViewMatrix, depthProgramInfo);
+    renderSphere(app, lightProjectionViewMatrix, depthProgramInfo);
+  }
+
+  gl.useProgram(programInfo.program);
+
   twgl.setUniforms(programInfo, {
     u_worldViewerPosition: cameraMatrix.slice(12, 15),
     u_lightDir: [
@@ -373,23 +387,10 @@ function render(app) {
     u_lightProjectionMap: textures.lightProjection,
   });
 
-  { // lightProjection
-    twgl.bindFramebufferInfo(gl, framebuffers.lightProjection);
-
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.useProgram(depthProgramInfo.program);
-
-    renderGround(app, lightProjectionViewMatrix, mirrorViewMatrix, depthProgramInfo);
-    renderSphere(app, lightProjectionViewMatrix, depthProgramInfo);
-  }
-
   { // mirror
     twgl.bindFramebufferInfo(gl, framebuffers.mirror);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.useProgram(programInfo.program);
 
     renderSphere(app, mirrorViewMatrix, programInfo);
   }
@@ -399,8 +400,6 @@ function render(app) {
   gl.canvas.width = gl.canvas.clientWidth;
   gl.canvas.height = gl.canvas.clientHeight;
   gl.viewport(0, 0, canvas.width, canvas.height);
-
-  gl.useProgram(programInfo.program);
 
   renderGround(app, viewMatrix, mirrorViewMatrix, programInfo);
   renderSphere(app, viewMatrix, programInfo);
