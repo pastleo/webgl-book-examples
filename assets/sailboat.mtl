@@ -1,7 +1,7 @@
 # Blender MTL File: 'sailboat.blend'
-# Material Count: 10
+# Material Count: 11
 
-newmtl Material.001
+newmtl mast
 Ns 225.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.352941 0.196078 0.047058
@@ -41,7 +41,7 @@ Ni 1.450000
 d 1.000000
 illum 2
 
-newmtl cannon_body
+newmtl cannon-body
 Ns 319.252781
 Ka 0.772059 0.772059 0.772059
 Kd 0.450980 0.450980 0.450980
@@ -51,7 +51,7 @@ Ni 1.450000
 d 1.000000
 illum 3
 
-newmtl cannon_wheel
+newmtl cannon-wheel
 Ns 225.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.443137 0.615686 0.800000
@@ -61,7 +61,7 @@ Ni 1.450000
 d 1.000000
 illum 3
 
-newmtl flag-my-logo
+newmtl flag-pastleo
 Ns 225.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.000000 0.000000 0.000000
@@ -82,17 +82,17 @@ Ni 1.450000
 d 1.000000
 illum 2
 
-newmtl lifebuoy.001
-Ns 225.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.894523 1.000000 0.000000
-Ks 0.500000 0.500000 0.500000
+newmtl sails
+Ns 21.458702
+Ka 0.088235 0.088235 0.088235
+Kd 0.403749 0.800000 0.406232
+Ks 0.566176 0.566176 0.566176
 Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
-illum 2
+illum 3
 
-newmtl sails
+newmtl sails-front
 Ns 21.458702
 Ka 0.088235 0.088235 0.088235
 Kd 0.403749 0.800000 0.406232
