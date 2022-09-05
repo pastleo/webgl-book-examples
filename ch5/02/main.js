@@ -166,6 +166,7 @@ async function setup() {
     2048, // width
     2048, // height
   );
+  // 把 texture 指定到 textures.mirror
   textures.mirror = framebuffers.mirror.attachments[0];
 
   const objects = {};
@@ -295,13 +296,15 @@ function render(app) {
     matrix4.inverse(cameraMatrix),
   );
 
+  // 鏡面中的相機
   const mirrorCameraMatrix = matrix4.multiply(
     matrix4.translate(...state.cameraViewing),
     matrix4.yRotate(state.cameraRotationXY[1]),
-    matrix4.xRotate(-state.cameraRotationXY[0]),
+    matrix4.xRotate(-state.cameraRotationXY[0]), // 反向旋轉 x 軸
     matrix4.translate(0, 0, state.cameraDistance),
   );
 
+  // 供鏡面使用的 viewMatrix
   const mirrorViewMatrix = matrix4.multiply(
     matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 2000),
     matrix4.inverse(mirrorCameraMatrix),
@@ -318,6 +321,7 @@ function render(app) {
     u_ambient: [0.4, 0.4, 0.4],
   });
 
+  // 以 twgl 所提供的工具來做 framebuffer 的切換
   twgl.bindFramebufferInfo(gl, framebuffers.mirror);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
