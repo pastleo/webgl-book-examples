@@ -67,7 +67,7 @@ void main() {
   vec2 texcoord = u_useMirrorTexcoord ? (
     (v_mirrorTexcoord.xy / v_mirrorTexcoord.w) * 0.5 + 0.5
   ) : v_texcoord;
-  vec3 normal = texture(u_normalMap, texcoord).xyz * 2.0 - 1.0;
+  vec3 normal = texture(u_normalMap, v_texcoord).xyz * 2.0 - 1.0;
   normal = normalize(v_normalMatrix * normal);
 
   vec3 diffuse = u_diffuse + texture(u_diffuseMap, texcoord).rgb;

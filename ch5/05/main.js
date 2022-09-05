@@ -75,7 +75,7 @@ void main() {
   vec2 texcoord = u_useMirrorTexcoord ? (
     (v_mirrorTexcoord.xy / v_mirrorTexcoord.w) * 0.5 + 0.5
   ) : v_texcoord;
-  vec3 normal = texture(u_normalMap, texcoord).xyz * 2.0 - 1.0;
+  vec3 normal = texture(u_normalMap, v_texcoord).xyz * 2.0 - 1.0;
   normal = normalize(v_normalMatrix * normal);
 
   vec2 lightProjectionCoord = v_lightProjection.xy / v_lightProjection.w * 0.5 + 0.5;
