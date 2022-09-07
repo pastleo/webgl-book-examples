@@ -152,7 +152,9 @@ async function setup() {
   const framebuffers = {};
 
   {
+    // 建立 framebuffer 
     textures.fb = gl.createTexture();
+    // 把目標對準（bind）新建立的 framebuffer
     gl.bindTexture(gl.TEXTURE_2D, textures.fb);
 
     const width = 2048;
@@ -217,6 +219,7 @@ async function setup() {
 
   gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
+  // 油漆工具
   gl.clearColor(1, 1, 1, 1);
 
   return {
@@ -323,13 +326,16 @@ function render(app) {
     u_ambient: [0.4, 0.4, 0.4],
   });
 
+  // 渲染寫入至 textures.fb
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.fb.framebuffer);
   gl.viewport(0, 0, framebuffers.fb.width, framebuffers.fb.height);
 
+  // 清除上個 frame 渲染的結果
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   renderSphere(app, viewMatrix);
 
+  // 將渲染目標切換回 <canvas /> 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   gl.canvas.width = gl.canvas.clientWidth;
