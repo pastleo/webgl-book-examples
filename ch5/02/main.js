@@ -166,7 +166,7 @@ async function setup() {
     2048, // width
     2048, // height
   );
-  // 把 texture 指定到 textures.mirror
+  // 把 twgl.createFramebufferInfo 自動產生的 texture 取出指定到 textures.mirror
   textures.mirror = framebuffers.mirror.attachments[0];
 
   const objects = {};
