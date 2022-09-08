@@ -288,10 +288,7 @@ async function setup() {
 }
 
 function renderSphere(app, viewMatrix, programInfo) {
-  const {
-    gl,
-    textures, objects,
-  } = app;
+  const { gl, textures, objects } = app;
 
   gl.bindVertexArray(objects.sphere.vao);
 
@@ -316,10 +313,7 @@ function renderSphere(app, viewMatrix, programInfo) {
 }
 
 function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
-  const {
-    gl,
-    textures, objects,
-  } = app;
+  const { gl, textures, objects } = app;
 
   gl.bindVertexArray(objects.plane.vao);
 
