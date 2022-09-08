@@ -302,7 +302,7 @@ precision highp float;
 
 in vec2 v_position;
 
-out float outLandAltitude;
+out int outLandAltitude;
 
 uniform float u_seed;
 uniform vec2 u_landMapSize;
@@ -312,7 +312,7 @@ float landAltitude(vec2 location);
 
 void main() {
   vec2 location = v_position * u_landMapSize * vec2(0.5, -0.5) + u_landMapOffset;
-  outLandAltitude = landAltitude(location);
+  outLandAltitude = int(landAltitude(location) * 65536.0);
 }
 
 float hash0(vec2 p) {
@@ -356,6 +356,7 @@ float landAltitude(vec2 loc) {
 `;
 
 const landVertexShaderSource = `#version 300 es
+precision highp isampler2D;
 in vec4 a_position;
 in vec2 a_texcoord;
 in vec3 a_normal;
@@ -366,7 +367,7 @@ uniform mat4 u_normalMatrix;
 uniform vec3 u_worldViewerPosition;
 uniform mat4 u_reflectionMatrix;
 uniform mat4 u_lightProjectionMatrix;
-uniform sampler2D u_landMap;
+uniform isampler2D u_landMap;
 uniform vec2 u_landMapSize;
 uniform vec2 u_landMapOffset;
 uniform vec2 u_landOffset;
@@ -384,10 +385,11 @@ out vec4 v_worldPosition;
 vec3 getAltitudePosition(vec4 pos) {
   vec2 location = pos.xz + u_landOffset;
 
-  float altitude = texture(
+  int altitudeInt = texture(
     u_landMap, 
     (location - u_landMapOffset) / u_landMapSize * vec2(1, -1) + vec2(0.5, 0.5)
   ).r;
+  float altitude = float(altitudeInt) / 65536.0;
   altitude = min(altitude, location.y * 0.333333 + u_landFarthestZ * -0.333333 - 1.0);
 
   return vec3(location.x, altitude, location.y);
@@ -430,11 +432,6 @@ void main() {
 async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
-
-  const glColorBufFloatExt = gl.getExtension("EXT_color_buffer_float");
-  if (!glColorBufFloatExt) {
-    throw new Error('sorry, this browser does not support EXT_color_buffer_float');
-  }
 
   twgl.setAttributePrefix('a_');
 
@@ -495,7 +492,7 @@ async function setup() {
 
   framebuffers.landMap = twgl.createFramebufferInfo(gl, [{
     attachmentPoint: gl.COLOR_ATTACHMENT0,
-    internalFormat: gl.R32F,
+    internalFormat: gl.R32I,
     minMag: gl.NEAREST,
   }], LAND_MAP_SIZE[0] * 8, LAND_MAP_SIZE[1] * 8);
   textures.landMap = framebuffers.landMap.attachments[0];
@@ -589,7 +586,7 @@ async function setup() {
 
       windStrength: 0.1,
 
-      directionDowns: new Set(),
+      directionDowns: [],
     },
     time: 0,
   };
@@ -1059,12 +1056,17 @@ function checkSailboatCollision(app) {
 
   const width = Math.max(right - left + 1, 1);
   const height = Math.max(bottom - top + 1, 1);
-  const pixels = app.collisionCheckPixels ?? new Float32Array(width * height * 2);
+  const format = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+  const dataStep = format === gl.RGBA_INTEGER ? 4 : 1;
+  const type = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+  const pixels = app.collisionCheckPixels ?? new Int32Array(
+    width * height * 2 * dataStep
+  );
   gl.readPixels(
-    left, top, width, height, gl.RED, gl.FLOAT, pixels,
+    left, top, width, height, format, type, pixels,
   );
   app.collisionCheckPixels = pixels;
-  for (let i = 0, len = width * height; i < len; i++) {
+  for (let i = 0, len = width * height; i < len; i += dataStep) {
     if (pixels[i] > 0) return true;
   }
   return false;
@@ -1080,36 +1082,33 @@ function initGameAndInput(app) {
   app.gl.canvas.addEventListener('contextmenu', event => event.preventDefault());
 
   document.getElementById('sail-left').addEventListener('pointerdown', () => {
-    app.state.sailing = 'left';
-    app.state.directionDowns.add('screen-left');
+    addDirection(app, 'screenLeft');
     updateDirection(app);
   });
   document.getElementById('sail-right').addEventListener('pointerdown', () => {
-    app.state.sailing = 'right';
-    app.state.directionDowns.add('screen-right');
+    addDirection(app, 'screenRight');
     updateDirection(app);
   });
   document.getElementById('sail-left').addEventListener('pointerup', () => {
-    app.state.directionDowns.delete('screen-left');
+    releaseDirection(app, 'screenLeft')
     updateDirection(app);
   });
   document.getElementById('sail-right').addEventListener('pointerup', () => {
-    app.state.directionDowns.delete('screen-right');
+    releaseDirection(app, 'screenRight')
     updateDirection(app);
   });
 
   document.addEventListener('keydown', event => {
-    if (event.code === 'KeyA' || event.code === 'ArrowLeft') {
-      app.state.sailing = 'left';
-      app.state.directionDowns.add(event.code);
-    } else if (event.code === 'KeyD' || event.code === 'ArrowRight') {
-      app.state.sailing = 'right';
-      app.state.directionDowns.add(event.code);
+    if (
+      event.code === 'KeyA' || event.code === 'ArrowLeft' ||
+      event.code === 'KeyD' || event.code === 'ArrowRight'
+    ) {
+      addDirection(app, event.code);
+      updateDirection(app);
     }
-    updateDirection(app);
   });
   document.addEventListener('keyup', event => {
-    app.state.directionDowns.delete(event.code);
+    releaseDirection(app, event.code)
     updateDirection(app);
   });
 
@@ -1118,7 +1117,23 @@ function initGameAndInput(app) {
   })
 }
 
+const DIRECTION_KEYMAP = {
+  KeyA: 'left',
+  KeyD: 'right',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  screenLeft: 'left',
+  screenRight: 'right',
+}
 function updateDirection(app) {
+  if (app.state.directionDowns.length > 0) {
+    app.state.sailing = DIRECTION_KEYMAP[
+      app.state.directionDowns[app.state.directionDowns.length - 1]
+    ];
+  } else {
+    app.state.sailing = false;
+  }
+
   document.getElementById('sail-left').classList.remove('active');
   document.getElementById('sail-right').classList.remove('active');
   if (app.state.sailing === 'left') {
@@ -1126,11 +1141,15 @@ function updateDirection(app) {
   } else if (app.state.sailing === 'right') {
     document.getElementById('sail-right').classList.add('active');
   }
-
-  if (app.state.sailing && app.state.directionDowns.size <= 0) {
-    app.state.sailing = false;
-    updateDirection(app);
-  }
+}
+function addDirection(app, key) {
+  const index = app.state.directionDowns.indexOf(key);
+  if (index === -1) app.state.directionDowns.push(key);
+}
+function releaseDirection(app, key) {
+  app.state.directionDowns = app.state.directionDowns.filter(
+    x => x !== key
+  );
 }
 
 function updateStatus(app) {
