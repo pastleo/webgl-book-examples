@@ -360,10 +360,7 @@ function renderSailboat(app, viewMatrix, programInfo) {
 }
 
 function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
-  const {
-    gl,
-    textures, objects,
-  } = app;
+  const { gl, textures, objects } = app;
 
   gl.bindVertexArray(objects.plane.vao);
 

@@ -409,10 +409,7 @@ function renderSailboat(app, viewMatrix, programInfo) {
 }
 
 function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
-  const {
-    gl,
-    textures, objects,
-  } = app;
+  const { gl, textures, objects } = app;
 
   gl.bindVertexArray(objects.plane.vao);
 
@@ -440,6 +437,7 @@ function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
 
 function renderSkybox(app, projectionMatrix, inversedCameraMatrix) {
   const { gl, skyboxProgramInfo, objects, textures } = app;
+
   gl.bindVertexArray(objects.skybox.vao);
 
   twgl.setUniforms(skyboxProgramInfo, {
