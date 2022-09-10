@@ -316,13 +316,13 @@ void main() {
 }
 
 float hash0(vec2 p) {
-  return fract(sin(p.x*123.+p.y*7184.) * u_seed);
+  return fract(sin(dot(p, vec2(101, 107))) * u_seed);
 }
 float hash1(vec2 p) {
-  return fract(sin(p.x*132.+p.y*7148.) * u_seed);
+  return fract(sin(dot(p, vec2(113, 127))) * u_seed);
 }
 float hash2(vec2 p) {
-  return fract(sin(p.x*321.+p.y*8239.) * u_seed);
+  return fract(sin(dot(p, vec2(179, 181))) * u_seed);
 }
 
 float island(vec2 loc, vec2 origin, float size) {
@@ -522,7 +522,7 @@ async function setup() {
   }
 
   { // xyQuad
-    const attribs = twgl.primitives.createXYQuadVertices()
+    const attribs = twgl.primitives.createXYQuadVertices();
     const bufferInfo = twgl.createBufferInfoFromArrays(gl, attribs);
     const vao = twgl.createVAOFromBufferInfo(gl, programInfos.skybox, bufferInfo);
 
@@ -910,7 +910,7 @@ function render(app) {
   );
 
   const projectionMatrix = matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 2000);
-  const inversedCameraMatrix = matrix4.inverse(cameraMatrix)
+  const inversedCameraMatrix = matrix4.inverse(cameraMatrix);
 
   const viewMatrix = matrix4.multiply(
     projectionMatrix,
@@ -924,7 +924,7 @@ function render(app) {
     matrix4.translate(0, 0, state.cameraDistance),
   );
 
-  const inversedReflectionCameraMatrix = matrix4.inverse(reflectionCameraMatrix)
+  const inversedReflectionCameraMatrix = matrix4.inverse(reflectionCameraMatrix);
 
   const reflectionViewMatrix = matrix4.multiply(
     projectionMatrix,

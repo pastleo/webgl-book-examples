@@ -252,7 +252,7 @@ async function setup() {
     nullNormal: { src: [127, 127, 255, 255] },
   });
 
-  {
+  { // skybox texture
     const images = await Promise.all([
       '/assets/skybox/east.webp',
       '/assets/skybox/west.webp',
@@ -267,37 +267,39 @@ async function setup() {
 
     gl.texImage2D(
       gl.TEXTURE_CUBE_MAP_POSITIVE_X,
-      /* level: */ 0, /* internalFormat: */ gl.RGBA, /* format: */ gl.RGBA, /* type: */ gl.UNSIGNED_BYTE,
+      /* level: */ 0,
+      /* internalFormat: */ gl.RGBA,
+      /* format: */ gl.RGBA,
+      /* type: */ gl.UNSIGNED_BYTE,
       images[0],
     );
     gl.texImage2D(
       gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
-      /* level: */ 0, /* internalFormat: */ gl.RGBA, /* format: */ gl.RGBA, /* type: */ gl.UNSIGNED_BYTE,
+      0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
       images[1],
     );
     gl.texImage2D(
       gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-      /* level: */ 0, /* internalFormat: */ gl.RGBA, /* format: */ gl.RGBA, /* type: */ gl.UNSIGNED_BYTE,
+      0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
       images[2],
     );
     gl.texImage2D(
       gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
-      /* level: */ 0, /* internalFormat: */ gl.RGBA, /* format: */ gl.RGBA, /* type: */ gl.UNSIGNED_BYTE,
+      0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
       images[3],
     );
     gl.texImage2D(
       gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-      /* level: */ 0, /* internalFormat: */ gl.RGBA, /* format: */ gl.RGBA, /* type: */ gl.UNSIGNED_BYTE,
+      0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
       images[4],
     );
     gl.texImage2D(
       gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
-      /* level: */ 0, /* internalFormat: */ gl.RGBA, /* format: */ gl.RGBA, /* type: */ gl.UNSIGNED_BYTE,
+      0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
       images[5],
     );
 
     gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-
     textures.skybox = texture;
   }
 
@@ -343,7 +345,7 @@ async function setup() {
   }
 
   { // skybox
-    const attribs = twgl.primitives.createXYQuadVertices()
+    const attribs = twgl.primitives.createXYQuadVertices();
     const bufferInfo = twgl.createBufferInfoFromArrays(gl, attribs);
     const vao = twgl.createVAOFromBufferInfo(gl, skyboxProgramInfo, bufferInfo);
 
@@ -515,7 +517,7 @@ function render(app) {
   );
 
   const projectionMatrix = matrix4.perspective(state.fieldOfView, gl.canvas.width / gl.canvas.height, 0.1, 2000);
-  const inversedCameraMatrix = matrix4.inverse(cameraMatrix)
+  const inversedCameraMatrix = matrix4.inverse(cameraMatrix);
 
   const viewMatrix = matrix4.multiply(
     projectionMatrix,
