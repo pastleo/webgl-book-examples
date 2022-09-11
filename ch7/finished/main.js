@@ -210,13 +210,11 @@ void main() {
 }
 
 float hash(vec2 p) {
-  p = fract(p * vec2(234.83, 194.51));
-  p += dot(p, p + 24.9);
-  return fract(p.x * p.y);
+  return fract(sin(mod(dot(p, vec2(13, 17)), radians(180.0))) * 4801.0);
 }
 
 float localWaveHeight(vec2 id, vec2 position) {
-  float directionRad = (hash(id) - 0.5) * 0.785 + 1.570796;
+  float directionRad = radians((hash(id) - 0.5) * 45.0 - 135.0);
   vec2 direction = vec2(cos(directionRad), sin(directionRad));
 
   float distance = length(id + 0.5 - position);
@@ -316,13 +314,13 @@ void main() {
 }
 
 float hash0(vec2 p) {
-  return fract(sin(dot(p, vec2(101, 107))) * u_seed);
+  return fract(sin(mod(dot(p, vec2(101, 107)), radians(180.0))) * u_seed);
 }
 float hash1(vec2 p) {
-  return fract(sin(dot(p, vec2(113, 127))) * u_seed);
+  return fract(sin(mod(dot(p, vec2(113, 127)), radians(180.0))) * u_seed);
 }
 float hash2(vec2 p) {
-  return fract(sin(dot(p, vec2(179, 181))) * u_seed);
+  return fract(sin(mod(dot(p, vec2(179, 181)), radians(180.0))) * u_seed);
 }
 
 float island(vec2 loc, vec2 origin, float size) {
