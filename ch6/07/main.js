@@ -199,13 +199,11 @@ void main() {
 }
 
 float hash(vec2 p) {
-  p = fract(p * vec2(234.83, 194.51));
-  p += dot(p, p + 24.9);
-  return fract(p.x * p.y);
+  return fract(sin(mod(dot(p, vec2(13, 17)), radians(180.0))) * 4801.0);
 }
 
 float localWaveHeight(vec2 id, vec2 position) {
-  float directionRad = (hash(id) - 0.5) * 0.785 - 2.355;
+  float directionRad = radians((hash(id) - 0.5) * 45.0 - 135.0);
   vec2 direction = vec2(cos(directionRad), sin(directionRad));
 
   float distance = length(id + 0.5 - position);
