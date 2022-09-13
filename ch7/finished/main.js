@@ -214,7 +214,7 @@ float hash(vec2 p) {
 }
 
 float localWaveHeight(vec2 id, vec2 position) {
-  float directionRad = radians((hash(id) - 0.5) * 45.0 - 135.0);
+  float directionRad = radians((hash(id) - 0.5) * 45.0 + 90.0);
   vec2 direction = vec2(cos(directionRad), sin(directionRad));
 
   float distance = length(id + 0.5 - position);
@@ -433,16 +433,15 @@ async function setup() {
 
   twgl.setAttributePrefix('a_');
 
-  const programInfos = {};
-
-  programInfos.main = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
-  programInfos.depth = twgl.createProgramInfo(gl, [vertexShaderSource, depthFragmentShaderSource]);
-  programInfos.ocean = twgl.createProgramInfo(gl, [vertexShaderSource, oceanFragmentShaderSource]);
-  programInfos.text = twgl.createProgramInfo(gl, [vertexShaderSource, textFragmentShaderSource]);
-  programInfos.land = twgl.createProgramInfo(gl, [landVertexShaderSource, fragmentShaderSource]);
-
-  programInfos.skybox = twgl.createProgramInfo(gl, [simpleVertexShaderSource, skyboxFragmentShaderSource]);
-  programInfos.landMap = twgl.createProgramInfo(gl, [simpleVertexShaderSource, landMapFragmentShaderSource]);
+  const programInfos = {
+    main: twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]),
+    depth: twgl.createProgramInfo(gl, [vertexShaderSource, depthFragmentShaderSource]),
+    ocean: twgl.createProgramInfo(gl, [vertexShaderSource, oceanFragmentShaderSource]),
+    land: twgl.createProgramInfo(gl, [landVertexShaderSource, fragmentShaderSource]),
+    text: twgl.createProgramInfo(gl, [vertexShaderSource, textFragmentShaderSource]),
+    skybox: twgl.createProgramInfo(gl, [simpleVertexShaderSource, skyboxFragmentShaderSource]),
+    landMap: twgl.createProgramInfo(gl, [simpleVertexShaderSource, landMapFragmentShaderSource]),
+  };
 
   const textures = twgl.createTextures(gl, {
     scale: {
@@ -563,7 +562,7 @@ async function setup() {
       cameraRotationXY: [degToRad(-15), degToRad(135)],
       cameraDistance: 15,
       cameraViewing: [0, 0, 0],
-      lightRotationXY: [degToRad(20), degToRad(-90)],
+      lightRotationXY: [degToRad(20), degToRad(-60)],
       resolutionRatio: 1,
 
       started: false,
@@ -990,11 +989,6 @@ function render(app) {
   twgl.resizeCanvasToDisplaySize(gl.canvas, state.resolutionRatio);
   gl.viewport(0, 0, canvas.width, canvas.height);
 
-  gl.useProgram(programInfos.land.program);
-  twgl.setUniforms(programInfos.land, globalUniforms);
-
-  renderLand(app, viewMatrix, programInfos.land);
-
   gl.useProgram(programInfos.main.program);
 
   renderSailboat(app, viewMatrix, programInfos.main);
@@ -1002,6 +996,10 @@ function render(app) {
   gl.useProgram(programInfos.ocean.program);
   twgl.setUniforms(programInfos.ocean, globalUniforms);
   renderOcean(app, viewMatrix, reflectionViewMatrix, programInfos.ocean);
+
+  gl.useProgram(programInfos.land.program);
+  twgl.setUniforms(programInfos.land, globalUniforms);
+  renderLand(app, viewMatrix, programInfos.land);
 
   { // skybox
     gl.useProgram(programInfos.skybox.program);
