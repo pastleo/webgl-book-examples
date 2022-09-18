@@ -308,7 +308,7 @@ void main() {
 }
 
 float landAltitude(vec2 loc) {
-  float altitude = -0.1;
+  float altitude = -1.0;
 
   if (loc.x >= -1.0 && loc.x <= 1.0) {
     altitude = 1.0;
