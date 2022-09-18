@@ -272,8 +272,8 @@ const simpleVertexShaderSource = `#version 300 es
 in vec2 a_position;
 uniform mat4 u_matrix;
 
-out vec3 v_normal;
 out vec2 v_position;
+out vec3 v_normal;
 
 void main() {
   gl_Position = vec4(a_position, 1, 1);
@@ -363,7 +363,6 @@ uniform mat4 u_matrix;
 uniform mat4 u_worldMatrix;
 uniform mat4 u_normalMatrix;
 uniform vec3 u_worldViewerPosition;
-uniform mat4 u_reflectionMatrix;
 uniform mat4 u_lightProjectionMatrix;
 uniform isampler2D u_landMap;
 uniform vec2 u_landMapSize;
@@ -374,8 +373,6 @@ uniform float u_landFarthestZ;
 out vec2 v_texcoord;
 out vec3 v_surfaceToViewer;
 out mat3 v_normalMatrix;
-out vec4 v_reflectionTexcoord;
-out float v_depth;
 out vec4 v_lightProjection;
 out vec4 v_worldPosition;
 
@@ -400,7 +397,6 @@ void main() {
 
   vec3 p2 = getAltitudePosition(a_position + vec4(0, 0, LAND_SAMPLE_DISTANCE, 0));
   vec3 p3 = getAltitudePosition(a_position + vec4(LAND_SAMPLE_DISTANCE, 0, 0, 0));
-
   vec3 landNormal = normalize(cross(
     normalize(p2 - position.xyz), normalize(p3 - position.xyz)
   ));
@@ -419,10 +415,6 @@ void main() {
 
   v_worldPosition = u_worldMatrix * position;
   v_surfaceToViewer = u_worldViewerPosition - v_worldPosition.xyz;
-
-  v_reflectionTexcoord = u_reflectionMatrix * v_worldPosition;
-
-  v_depth = gl_Position.z / gl_Position.w * 0.5 + 0.5;
   v_lightProjection = u_lightProjectionMatrix * v_worldPosition;
 }
 `;
@@ -532,14 +524,15 @@ async function setup() {
 
   { // land
     const vertexDataArrays = twgl.primitives.createPlaneVertices(
-      LAND_CHUNK_SIZE, LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * 2, LAND_CHUNK_SIZE * 2
+      LAND_CHUNK_SIZE, LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * 2, LAND_CHUNK_SIZE * 2,
     );
     const bufferInfo = twgl.createBufferInfoFromArrays(gl, vertexDataArrays);
     const vao = twgl.createVAOFromBufferInfo(gl, programInfos.land, bufferInfo);
 
     objects.land = {
       vertexDataArrays,
-      vao, bufferInfo,
+      bufferInfo,
+      vao,
     };
   }
 
@@ -784,8 +777,6 @@ function renderLand(app, viewMatrix, programInfo) {
 
   gl.bindVertexArray(objects.land.vao);
 
-  const u_landMapOffset = getLandMapOffset(app);
-  const u_landFarthestZ = state.sailboatLocation[1] - LAND_CHUNK_SIZE * (LAND_CHUNKS - 1.5);
   const worldMatrix = matrix4.identity();
 
   twgl.setUniforms(programInfo, {
@@ -799,8 +790,8 @@ function renderLand(app, viewMatrix, programInfo) {
     u_normalMap: textures.nullNormal,
     u_landMap: textures.landMap,
     u_landMapSize: LAND_MAP_SIZE,
-    u_landFarthestZ,
-    u_landMapOffset,
+    u_landMapOffset: getLandMapOffset(app),
+    u_landFarthestZ: state.sailboatLocation[1] - LAND_CHUNK_SIZE * (LAND_CHUNKS - 1.5),
   });
 
   for (let i = 0; i < LAND_CHUNKS; i++) {
