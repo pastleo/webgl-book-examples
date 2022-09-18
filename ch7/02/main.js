@@ -335,6 +335,70 @@ float landAltitude(vec2 loc) {
 }
 `;
 
+const landVertexShaderSource = `#version 300 es
+precision highp isampler2D;
+in vec4 a_position;
+in vec2 a_texcoord;
+in vec3 a_normal;
+
+uniform mat4 u_matrix;
+uniform mat4 u_worldMatrix;
+uniform mat4 u_normalMatrix;
+uniform vec3 u_worldViewerPosition;
+uniform mat4 u_lightProjectionMatrix;
+uniform isampler2D u_landMap;
+uniform vec2 u_landMapSize;
+uniform vec2 u_landMapOffset;
+uniform vec2 u_landOffset;
+
+out vec2 v_texcoord;
+out vec3 v_surfaceToViewer;
+out mat3 v_normalMatrix;
+out vec4 v_lightProjection;
+out vec4 v_worldPosition;
+
+#define LAND_SAMPLE_DISTANCE 0.5
+vec3 getAltitudePosition(vec4 pos) {
+  vec2 location = pos.xz + u_landOffset;
+
+  int altitudeInt = texture(
+    u_landMap,
+    (location - u_landMapOffset) / u_landMapSize * vec2(1, -1) + vec2(0.5, 0.5)
+  ).r;
+  float altitude = float(altitudeInt) / 65536.0;
+
+  return vec3(location.x, altitude, location.y);
+}
+
+void main() {
+  vec4 position = vec4(getAltitudePosition(a_position), 1);
+  gl_Position = u_matrix * position;
+  v_texcoord = vec2(a_texcoord.x, 1.0 - a_texcoord.y);
+
+  vec3 p2 = getAltitudePosition(a_position + vec4(0, 0, LAND_SAMPLE_DISTANCE, 0));
+  vec3 p3 = getAltitudePosition(a_position + vec4(LAND_SAMPLE_DISTANCE, 0, 0, 0));
+  vec3 landNormal = normalize(cross(
+    normalize(p2 - position.xyz), normalize(p3 - position.xyz)
+  ));
+
+  vec3 normal = mat3(u_normalMatrix) * landNormal;
+  vec3 normalMatrixI = normal.y >= 1.0 ?
+    vec3(1, 0, 0) :
+    normalize(cross(vec3(0, 1, 0), normal));
+  vec3 normalMatrixJ = normalize(cross(normal, normalMatrixI));
+
+  v_normalMatrix = mat3(
+    normalMatrixI,
+    normalMatrixJ,
+    normal
+  );
+
+  v_worldPosition = u_worldMatrix * position;
+  v_surfaceToViewer = u_worldViewerPosition - v_worldPosition.xyz;
+  v_lightProjection = u_lightProjectionMatrix * v_worldPosition;
+}
+`;
+
 async function setup() {
   const canvas = document.getElementById('canvas');
   const gl = canvas.getContext('webgl2');
@@ -345,6 +409,7 @@ async function setup() {
     main: twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]),
     depth: twgl.createProgramInfo(gl, [vertexShaderSource, depthFragmentShaderSource]),
     ocean: twgl.createProgramInfo(gl, [vertexShaderSource, oceanFragmentShaderSource]),
+    land: twgl.createProgramInfo(gl, [landVertexShaderSource, fragmentShaderSource]),
     text: twgl.createProgramInfo(gl, [vertexShaderSource, textFragmentShaderSource]),
     skybox: twgl.createProgramInfo(gl, [simpleVertexShaderSource, skyboxFragmentShaderSource]),
     landMap: twgl.createProgramInfo(gl, [simpleVertexShaderSource, landMapFragmentShaderSource]),
@@ -431,6 +496,20 @@ async function setup() {
 
     objects.xyQuad = {
       attribs,
+      bufferInfo,
+      vao,
+    };
+  }
+
+  { // land
+    const vertexDataArrays = twgl.primitives.createPlaneVertices(
+      LAND_CHUNK_SIZE, LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * 2, LAND_CHUNK_SIZE * 2,
+    );
+    const bufferInfo = twgl.createBufferInfoFromArrays(gl, vertexDataArrays);
+    const vao = twgl.createVAOFromBufferInfo(gl, programInfos.land, bufferInfo);
+
+    objects.land = {
+      vertexDataArrays,
       bufferInfo,
       vao,
     };
@@ -589,6 +668,35 @@ function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
   twgl.drawBufferInfo(gl, objects.plane.bufferInfo);
 }
 
+function renderLand(app, viewMatrix, programInfo) {
+  const { gl, textures, objects, state } = app;
+
+  gl.bindVertexArray(objects.land.vao);
+
+  const worldMatrix = matrix4.identity();
+
+  twgl.setUniforms(programInfo, {
+    u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+    u_worldMatrix: worldMatrix,
+    u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
+    u_diffuse: [0.97265625, 0.9140625, 0.62890625],
+    u_diffuseMap: textures.null,
+    u_emissive: [0, 0, 0],
+    u_specular: [0, 0, 0],
+    u_normalMap: textures.nullNormal,
+    u_landMap: textures.landMap,
+    u_landMapSize: LAND_MAP_SIZE,
+    u_landMapOffset: getLandMapOffset(app),
+  });
+
+  for (let i = 0; i < LAND_CHUNKS; i++) {
+    twgl.setUniforms(programInfo, {
+      u_landOffset: [0, -LAND_CHUNK_SIZE * (state.level + i)],
+    });
+    twgl.drawBufferInfo(gl, objects.land.bufferInfo);
+  }
+}
+
 function renderSkybox(app, projectionMatrix, inversedCameraMatrix) {
   const { gl, programInfos, objects, textures } = app;
 
@@ -738,6 +846,10 @@ function render(app) {
   gl.useProgram(programInfos.ocean.program);
   twgl.setUniforms(programInfos.ocean, globalUniforms);
   renderOcean(app, viewMatrix, reflectionViewMatrix, programInfos.ocean);
+
+  gl.useProgram(programInfos.land.program);
+  twgl.setUniforms(programInfos.land, globalUniforms);
+  renderLand(app, viewMatrix, programInfos.land);
 
   { // skybox
     gl.useProgram(programInfos.skybox.program);
