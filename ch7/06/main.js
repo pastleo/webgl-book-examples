@@ -1,7 +1,7 @@
 import * as twgl from '../../lib/vendor/twgl-full.module.js';
 import * as WebGLObjLoader from '../../lib/vendor/webgl-obj-loader.esm.js';
 import listenToInputs from '../../lib/input.js';
-import { degToRad } from '../../lib/utils.js';
+import { degToRad, length } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
 const LAND_CHUNK_SIZE = 96;
@@ -9,7 +9,7 @@ const LAND_CHUNKS = 3;
 const LAND_MAP_SIZE = [LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * LAND_CHUNKS];
 const MAX_VELOCITY = 0.05;
 const ACCELERATION = 0.0035;
-const ACCELERATION_DIRECTION_DEG = degToRad(20);
+const SAIL_DIRECTION_RAD = degToRad(20);
 const DEACCELERATION = 0.0003;
 const SAILBOAT_COLLISION_BORDERS = [0.5, 0.5, 2.75, 1]; // [+x, -x, +z, -z]
 
@@ -236,7 +236,7 @@ vec3 oceanSurfacePosition(vec2 position) {
     }
   }
 
-  height *= 0.5 * u_windStrength;
+  height *= u_windStrength;
 
   return vec3(position, height);
 }
@@ -672,8 +672,9 @@ function renderSailboat(app, viewMatrix, programInfo) {
   const { gl, textures, objects, state, time } = app;
 
   const worldMatrix = matrix4.multiply(
-    matrix4.translate(state.sailboatLocation[0], Math.sin(time * 0.0017) * 0.05 + state.sailboatSinking, state.sailboatLocation[1]),
+    matrix4.translate(state.sailboatLocation[0], 0, state.sailboatLocation[1]),
     matrix4.xRotate(Math.sin(time * 0.0011) * 0.03 + 0.03 + state.sailboatRotationX),
+    matrix4.translate(0, Math.sin(time * 0.0017) * 0.05 + state.sailboatSinking, 0),
   );
   const sailWorldMatrix = matrix4.multiply(
     worldMatrix,
@@ -1064,11 +1065,6 @@ function releaseDirection(app, key) {
   );
 }
 
-function updateStatus(app) {
-  document.getElementById('status-distance').textContent = (-app.state.sailboatLocation[1]).toFixed(2);
-  document.getElementById('status-time').textContent = `${((app.time - app.state.startedTime) / 1000).toFixed(1)} 秒`;
-}
-
 function initGame(app) {
   app.state = {
     fieldOfView: degToRad(45),
@@ -1083,7 +1079,9 @@ function initGame(app) {
     gameOver: false,
     startedTime: 0,
     level: 0,
+    windStrength: 0.1,
 
+    directionDowns: [],
     sailing: false,
     sailTranslateY: 0,
     sailScaleX: 1,
@@ -1095,9 +1093,6 @@ function initGame(app) {
     sailboatLocation: [0, 0],
     sailboatVelocity: [0, 0],
 
-    windStrength: 0.1,
-
-    directionDowns: [],
   };
 
   renderLandMap(app);
@@ -1145,29 +1140,29 @@ function gameUpdate(app, timeDiff, now) {
 
   if (state.started) {
     if (!state.gameOver) {
-      state.cameraRotationXY[1] = clamp(state.cameraRotationXY[1] - timeDiff * 0.0045, 0, degToRad(135));
-      state.cameraDistance = clamp(state.cameraDistance + timeDiff * 0.01, 15, 25);
+      state.cameraRotationXY[1] = Math.max(state.cameraRotationXY[1] - timeDiff * 0.0045, 0);
+      state.cameraDistance = Math.min(state.cameraDistance + timeDiff * 0.01, 25);
 
       if (state.sailing) {
-        state.sailTranslateY = clamp(state.sailTranslateY - timeDiff * 0.0045, 0, 2.25);
-        state.sailScaleY = clamp(state.sailScaleY + timeDiff * 0.0018, 0.1, 1);
-        state.sailFrontScaleXY = clamp(state.sailFrontScaleXY + timeDiff * 0.002, 0, 1);
+        state.sailTranslateY = Math.max(state.sailTranslateY - timeDiff * 0.0045, 0);
+        state.sailScaleY = Math.min(state.sailScaleY + timeDiff * 0.0018, 1);
+        state.sailFrontScaleXY = Math.min(state.sailFrontScaleXY + timeDiff * 0.002, 1);
 
-        let accDirection;
+        let direction;
         if (state.sailing === 'left') {
-          accDirection = -ACCELERATION_DIRECTION_DEG;
+          direction = -SAIL_DIRECTION_RAD;
           state.sailScaleX = -1;
         } else if (state.sailing === 'right') {
-          accDirection = ACCELERATION_DIRECTION_DEG;
+          direction = SAIL_DIRECTION_RAD;
           state.sailScaleX = 1;
         }
-        state.sailboatVelocity[0] += state.windStrength * timeDiff * 0.0625 * ACCELERATION * Math.sin(accDirection);
-        state.sailboatVelocity[1] -= state.windStrength * timeDiff * 0.0625 * ACCELERATION * Math.cos(accDirection);
+        state.sailboatVelocity[0] += state.windStrength * timeDiff * 0.0625 * ACCELERATION * Math.sin(direction);
+        state.sailboatVelocity[1] -= state.windStrength * timeDiff * 0.0625 * ACCELERATION * Math.cos(direction);
 
       } else {
-        state.sailTranslateY = clamp(state.sailTranslateY + timeDiff * 0.0045, 0, 2.25);
-        state.sailScaleY = clamp(state.sailScaleY - timeDiff * 0.0018, 0.1, 1);
-        state.sailFrontScaleXY = clamp(state.sailFrontScaleXY - timeDiff * 0.002, 0, 1);
+        state.sailTranslateY = Math.min(state.sailTranslateY + timeDiff * 0.0045, 2.25);
+        state.sailScaleY = Math.max(state.sailScaleY - timeDiff * 0.0018, 0.1);
+        state.sailFrontScaleXY = Math.max(state.sailFrontScaleXY - timeDiff * 0.002, 0);
       }
 
       const velocity = length(state.sailboatVelocity);
@@ -1191,9 +1186,9 @@ function gameUpdate(app, timeDiff, now) {
         );
         gameOver(app);
         
-      } else if (state.sailboatLocation[1] < -(state.level + 1) * LAND_CHUNK_SIZE) {
+      } else if (state.sailboatLocation[1] < getLandMapOffset(app)[1]) {
         state.level++;
-        state.windStrength = clamp(state.windStrength + 0.005, 0.1, 0.5);
+        state.windStrength = Math.min(state.windStrength + 0.005, 0.4);
         console.log('next level!', {
           level: state.level,
           windStrength: state.windStrength,
@@ -1223,6 +1218,11 @@ function getSlowDownRatio(velocity) {
   const maxCap = velocity > MAX_VELOCITY ? MAX_VELOCITY / velocity : 1;
   if (velocity < DEACCELERATION) return 0;
   return maxCap * (velocity - DEACCELERATION) / velocity;
+}
+
+function updateStatus(app) {
+  document.getElementById('status-distance').textContent = (-app.state.sailboatLocation[1]).toFixed(2);
+  document.getElementById('status-time').textContent = `${((app.time - app.state.startedTime) / 1000).toFixed(1)} 秒`;
 }
 
 function startLoop(app, now = 0) {
@@ -1255,11 +1255,3 @@ async function main() {
   startLoop(app);
 }
 main();
-
-function clamp(x, min, max) {
-  return Math.max(Math.min(x, max), min)
-}
-
-function length(vec2) {
-  return Math.sqrt(vec2[0] * vec2[0] + vec2[1] * vec2[1]);
-}

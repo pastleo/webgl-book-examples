@@ -891,7 +891,7 @@ function initGame(app) {
 
     seed: Math.random() * 20000 + 5000,
     level: 0,
-  }
+  };
 
   renderLandMap(app);
 }

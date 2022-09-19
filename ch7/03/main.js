@@ -908,7 +908,7 @@ function initGame(app) {
     level: 0,
 
     sailboatLocation: [0, 0],
-  }
+  };
 
   renderLandMap(app);
 }
