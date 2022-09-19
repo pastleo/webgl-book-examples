@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="initial-scale=1">
+  <title>07-catch-the-wind</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      touch-action: none;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      background: black;
+    }
+    #options {
+      position: fixed;
+      top: 0;
+      right: 0;
+      margin: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="options">
+    <label for="resolution-ratio">解析度</label>
+    <select id="resolution-ratio" name="resolution-ratio">
+      <option value="0.75">低</option>
+      <option value="1" selected>普通</option>
+      <option id="resolution-ratio-retina" value="1" disabled>Retina</option>
+    </select>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
