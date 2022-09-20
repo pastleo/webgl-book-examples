@@ -453,6 +453,7 @@ function renderSkybox(app, projectionMatrix, inversedCameraMatrix) {
     ),
   });
 
+  // 深度設定成『小於等於』
   gl.depthFunc(gl.LEQUAL);
   twgl.drawBufferInfo(gl, objects.skybox.bufferInfo);
   gl.depthFunc(gl.LESS); // reset to default

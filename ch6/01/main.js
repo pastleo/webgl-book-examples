@@ -291,6 +291,7 @@ async function setup() {
   };
 }
 
+// 讀取 .obj、.mtl 並傳入 WebGL context gl 變數
 async function loadSailboatModel(gl, textures, programInfo) {
   const { boatModel } = await WebGLObjLoader.downloadModels([{
     name: 'boatModel',
