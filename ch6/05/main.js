@@ -412,7 +412,7 @@ function createTextTexture(gl) {
 
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
-
+  // 翻轉 Y 軸
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   gl.texImage2D(
@@ -424,7 +424,7 @@ function createTextTexture(gl) {
     canvas, // data
   );
   gl.generateMipmap(gl.TEXTURE_2D);
-
+  // Y 軸設定回預設
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
   return texture;
