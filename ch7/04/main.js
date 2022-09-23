@@ -1,12 +1,14 @@
 import * as twgl from '../../lib/vendor/twgl-full.module.js';
 import * as WebGLObjLoader from '../../lib/vendor/webgl-obj-loader.esm.js';
-import listenToInputs, { update as inputUpdate } from '../../lib/input.js';
+import listenToInputs from '../../lib/input.js';
 import { degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
 const LAND_CHUNK_SIZE = 96;
 const LAND_CHUNKS = 3;
 const LAND_MAP_SIZE = [LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * LAND_CHUNKS];
+const MAX_VELOCITY = 0.05;
+const SAIL_DIRECTION_RAD = degToRad(20);
 
 const vertexShaderSource = `#version 300 es
 in vec4 a_position;
@@ -150,6 +152,7 @@ uniform vec3 u_emissive;
 uniform vec3 u_ambient;
 uniform sampler2D u_lightProjectionMap;
 uniform float u_time;
+uniform float u_windStrength;
 
 out vec4 outColor;
 
@@ -207,7 +210,7 @@ float hash(vec2 p) {
 }
 
 float localWaveHeight(vec2 id, vec2 position) {
-  float directionRad = radians((hash(id) - 0.5) * 45.0 - 135.0);
+  float directionRad = radians((hash(id) - 0.5) * 45.0 + 90.0);
   vec2 direction = vec2(cos(directionRad), sin(directionRad));
 
   float distance = length(id + 0.5 - position);
@@ -229,7 +232,7 @@ vec3 oceanSurfacePosition(vec2 position) {
     }
   }
 
-  height *= 0.15;
+  height *= u_windStrength;
 
   return vec3(position, height);
 }
@@ -307,31 +310,109 @@ void main() {
   outLandAltitude = int(landAltitude(location) * 65536.0);
 }
 
+float hash0(vec2 p) {
+  return fract(sin(mod(dot(p, vec2(101, 107)), radians(180.0))) * u_seed);
+}
+float hash1(vec2 p) {
+  return fract(sin(mod(dot(p, vec2(113, 127)), radians(180.0))) * u_seed);
+}
+float hash2(vec2 p) {
+  return fract(sin(mod(dot(p, vec2(179, 181)), radians(180.0))) * u_seed);
+}
+
+float island(vec2 loc, vec2 origin, float size) {
+  return log(max((size - length(loc - origin)) * 0.35, 0.01));
+}
+float localLandAltitude(vec2 loc, vec2 id) {
+  if (id.y >= 2.0 || id.y >= -2.0 && id.x <= 0.0 && id.x >= -1.0) return -1.0;
+
+  vec2 origin = id * 16.0 + vec2(8, 8) + (vec2(hash0(id), hash1(id)) - 0.5) * 10.0;
+  float size = hash2(id) * 2.0 + abs(id.x + 0.5) * 1.2 + 4.0;
+
+  return island(loc, origin, size);
+}
+
 float landAltitude(vec2 loc) {
   float altitude = -1.0;
 
-  if (loc.x >= -1.0 && loc.x <= 1.0) {
-    altitude = 1.0;
-  }
-  if (loc.y >= -1.0 && loc.y <= 1.0) {
-    altitude = 1.0;
+  vec2 id = floor(loc * 0.0625);
+
+  for (int i = -1; i <= 1; i++) {
+    for (int j = -1; j <= 1; j++) {
+      altitude = max(altitude, localLandAltitude(loc, id + vec2(i, j)));
+    }
   }
 
-  if (loc.x >= -49.0 && loc.x <= -47.0 && loc.y >= 47.0 && loc.y <= 49.0) {
-    altitude = 1.0;
-  }
-  if (loc.x >= 47.0 && loc.x <= 49.0 && loc.y >= 47.0 && loc.y <= 49.0) {
-    altitude = 1.0;
-  }
-  if (loc.x >= 47.0 && loc.x <= 49.0 && loc.y >= -49.0 && loc.y <= -47.0) {
-    altitude = 1.0;
-  }
-
-  if (loc.x >= -49.0 && loc.x <= -47.0 && loc.y >= -241.0 && loc.y <= -239.0) {
-    altitude = 1.0;
-  }
+  altitude = max(altitude, log(max(clamp(loc.y * -0.375 - 3.0, 0.0, 3.0) - abs(loc.x + cos(loc.y) - 45.0), 0.01)));
+  altitude = max(altitude, log(max(clamp(loc.y * -0.375 - 3.0, 0.0, 3.0) - abs(loc.x + cos(loc.y) + 45.0), 0.01)));
 
   return altitude;
+}
+`;
+
+const landVertexShaderSource = `#version 300 es
+precision highp isampler2D;
+in vec4 a_position;
+in vec2 a_texcoord;
+in vec3 a_normal;
+
+uniform mat4 u_matrix;
+uniform mat4 u_worldMatrix;
+uniform mat4 u_normalMatrix;
+uniform vec3 u_worldViewerPosition;
+uniform mat4 u_lightProjectionMatrix;
+uniform isampler2D u_landMap;
+uniform vec2 u_landMapSize;
+uniform vec2 u_landMapOffset;
+uniform vec2 u_landOffset;
+uniform float u_landFarthest;
+
+out vec2 v_texcoord;
+out vec3 v_surfaceToViewer;
+out mat3 v_normalMatrix;
+out vec4 v_lightProjection;
+out vec4 v_worldPosition;
+
+#define LAND_SAMPLE_DISTANCE 0.5
+vec3 getAltitudePosition(vec4 pos) {
+  vec2 location = pos.xz + u_landOffset;
+
+  int altitudeInt = texture(
+    u_landMap,
+    (location - u_landMapOffset) / u_landMapSize * vec2(1, -1) + vec2(0.5, 0.5)
+  ).r;
+  float altitude = float(altitudeInt) / 65536.0;
+  altitude = min(altitude, location.y * 0.333333 + u_landFarthest * -0.333333 - 1.0);
+
+  return vec3(location.x, altitude, location.y);
+}
+
+void main() {
+  vec4 position = vec4(getAltitudePosition(a_position), 1);
+  gl_Position = u_matrix * position;
+  v_texcoord = vec2(a_texcoord.x, 1.0 - a_texcoord.y);
+
+  vec3 p2 = getAltitudePosition(a_position + vec4(0, 0, LAND_SAMPLE_DISTANCE, 0));
+  vec3 p3 = getAltitudePosition(a_position + vec4(LAND_SAMPLE_DISTANCE, 0, 0, 0));
+  vec3 landNormal = normalize(cross(
+    normalize(p2 - position.xyz), normalize(p3 - position.xyz)
+  ));
+
+  vec3 normal = mat3(u_normalMatrix) * landNormal;
+  vec3 normalMatrixI = normal.y >= 1.0 ?
+    vec3(1, 0, 0) :
+    normalize(cross(vec3(0, 1, 0), normal));
+  vec3 normalMatrixJ = normalize(cross(normal, normalMatrixI));
+
+  v_normalMatrix = mat3(
+    normalMatrixI,
+    normalMatrixJ,
+    normal
+  );
+
+  v_worldPosition = u_worldMatrix * position;
+  v_surfaceToViewer = u_worldViewerPosition - v_worldPosition.xyz;
+  v_lightProjection = u_lightProjectionMatrix * v_worldPosition;
 }
 `;
 
@@ -345,6 +426,7 @@ async function setup() {
     main: twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]),
     depth: twgl.createProgramInfo(gl, [vertexShaderSource, depthFragmentShaderSource]),
     ocean: twgl.createProgramInfo(gl, [vertexShaderSource, oceanFragmentShaderSource]),
+    land: twgl.createProgramInfo(gl, [landVertexShaderSource, fragmentShaderSource]),
     text: twgl.createProgramInfo(gl, [vertexShaderSource, textFragmentShaderSource]),
     skybox: twgl.createProgramInfo(gl, [simpleVertexShaderSource, skyboxFragmentShaderSource]),
     landMap: twgl.createProgramInfo(gl, [simpleVertexShaderSource, landMapFragmentShaderSource]),
@@ -436,6 +518,20 @@ async function setup() {
     };
   }
 
+  { // land
+    const vertexDataArrays = twgl.primitives.createPlaneVertices(
+      LAND_CHUNK_SIZE, LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * 2, LAND_CHUNK_SIZE * 2,
+    );
+    const bufferInfo = twgl.createBufferInfoFromArrays(gl, vertexDataArrays);
+    const vao = twgl.createVAOFromBufferInfo(gl, programInfos.land, bufferInfo);
+
+    objects.land = {
+      vertexDataArrays,
+      bufferInfo,
+      vao,
+    };
+  }
+
   objects.sailboat = await loadSailboatModel(gl, textures, programInfos.main);
 
   gl.enable(gl.CULL_FACE);
@@ -482,6 +578,7 @@ async function loadSailboatModel(gl, textures, programInfo) {
     }
 
     return {
+      name: material.name,
       bufferInfo,
       vao: twgl.createVAOFromBufferInfo(gl, programInfo, bufferInfo),
       uniforms: {
@@ -542,35 +639,63 @@ function createTextTexture(gl) {
 }
 
 function renderSailboat(app, viewMatrix, programInfo) {
-  const { gl, textures, objects, time } = app;
+  const { gl, textures, objects, state, time } = app;
 
   const worldMatrix = matrix4.multiply(
-    matrix4.yRotate(degToRad(45)),
+    matrix4.translate(state.sailboatLocation[0], 0, state.sailboatLocation[1]),
     matrix4.xRotate(Math.sin(time * 0.0011) * 0.03 + 0.03),
     matrix4.translate(0, Math.sin(time * 0.0017) * 0.05, 0),
   );
+  const sailWorldMatrix = matrix4.multiply(
+    worldMatrix,
+    matrix4.translate(0, state.sailTranslateY, 0),
+    matrix4.scale(state.sailScaleX, state.sailScaleY, 1),
+  );
+  const sailFrontWorldMatrix = matrix4.multiply(
+    worldMatrix,
+    matrix4.scale(state.sailFrontScaleXY * state.sailScaleX, state.sailFrontScaleXY, 1),
+  );
 
-  twgl.setUniforms(programInfo, {
+  const objUniforms = {
     u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
     u_worldMatrix: worldMatrix,
     u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
     u_normalMap: textures.nullNormal,
-  });
+  };
+  const sailUniforms = {
+    u_matrix: matrix4.multiply(viewMatrix, sailWorldMatrix),
+    u_worldMatrix: sailWorldMatrix,
+    u_normalMatrix: matrix4.transpose(matrix4.inverse(sailWorldMatrix)),
+  };
+  const sailFrontUniforms = {
+    u_matrix: matrix4.multiply(viewMatrix, sailFrontWorldMatrix),
+    u_worldMatrix: sailFrontWorldMatrix,
+    u_normalMatrix: matrix4.transpose(matrix4.inverse(sailFrontWorldMatrix)),
+  };
 
-  objects.sailboat.forEach(({ bufferInfo, vao, uniforms }) => {
+  gl.disable(gl.CULL_FACE);
+
+  objects.sailboat.forEach(({ name, bufferInfo, vao, uniforms }) => {
     gl.bindVertexArray(vao);
-    twgl.setUniforms(programInfo, uniforms);
+    twgl.setUniforms(programInfo, {
+      ...objUniforms,
+      ...(name === 'sails' && sailUniforms),
+      ...(name === 'sails-front' && sailFrontUniforms),
+      ...uniforms,
+    });
     twgl.drawBufferInfo(gl, bufferInfo);
   });
+
+  gl.enable(gl.CULL_FACE);
 }
 
 function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
-  const { gl, textures, objects } = app;
+  const { gl, textures, objects, state } = app;
 
   gl.bindVertexArray(objects.plane.vao);
 
   const worldMatrix = matrix4.multiply(
-    matrix4.translate(0, 0, 0),
+    matrix4.translate(state.sailboatLocation[0], 0, state.sailboatLocation[1]),
     matrix4.scale(4000, 1, 4000),
   );
 
@@ -584,9 +709,40 @@ function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
     u_emissive: [0, 0, 0],
     u_ambient: [0.4, 0.4, 0.4],
     u_reflectionMatrix: reflectionViewMatrix,
+    u_windStrength: state.windStrength,
   });
 
   twgl.drawBufferInfo(gl, objects.plane.bufferInfo);
+}
+
+function renderLand(app, viewMatrix, programInfo) {
+  const { gl, textures, objects, state } = app;
+
+  gl.bindVertexArray(objects.land.vao);
+
+  const worldMatrix = matrix4.identity();
+
+  twgl.setUniforms(programInfo, {
+    u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+    u_worldMatrix: worldMatrix,
+    u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
+    u_diffuse: [0.97265625, 0.9140625, 0.62890625],
+    u_diffuseMap: textures.null,
+    u_emissive: [0, 0, 0],
+    u_specular: [0, 0, 0],
+    u_normalMap: textures.nullNormal,
+    u_landMap: textures.landMap,
+    u_landMapSize: LAND_MAP_SIZE,
+    u_landMapOffset: getLandMapOffset(app),
+    u_landFarthest: state.sailboatLocation[1] - LAND_CHUNK_SIZE * (LAND_CHUNKS - 1.5),
+  });
+
+  for (let i = 0; i < LAND_CHUNKS; i++) {
+    twgl.setUniforms(programInfo, {
+      u_landOffset: [0, -LAND_CHUNK_SIZE * (state.level + i)],
+    });
+    twgl.drawBufferInfo(gl, objects.land.bufferInfo);
+  }
 }
 
 function renderSkybox(app, projectionMatrix, inversedCameraMatrix) {
@@ -682,6 +838,7 @@ function render(app) {
     ],
     matrix4.inverse(
       matrix4.multiply(
+        matrix4.translate(state.sailboatLocation[0], 0, state.sailboatLocation[1]),
         matrix4.yRotate(state.lightRotationXY[1]),
         matrix4.xRotate(degToRad(90)),
       )
@@ -739,6 +896,10 @@ function render(app) {
   twgl.setUniforms(programInfos.ocean, globalUniforms);
   renderOcean(app, viewMatrix, reflectionViewMatrix, programInfos.ocean);
 
+  gl.useProgram(programInfos.land.program);
+  twgl.setUniforms(programInfos.land, globalUniforms);
+  renderLand(app, viewMatrix, programInfos.land);
+
   { // skybox
     gl.useProgram(programInfos.skybox.program);
     renderSkybox(app, projectionMatrix, inversedCameraMatrix);
@@ -768,6 +929,33 @@ function getLandMapOffset(app) {
   return [0, -LAND_CHUNK_SIZE * (app.state.level + (LAND_CHUNKS * 0.5 - 0.5))];
 }
 
+const DIRECTION_KEYMAP = {
+  KeyA: 'left',
+  KeyD: 'right',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  screenLeft: 'left',
+  screenRight: 'right',
+}
+function updateDirection(app) {
+  if (app.state.directionDowns.length > 0) {
+    app.state.sailing = DIRECTION_KEYMAP[
+      app.state.directionDowns[app.state.directionDowns.length - 1]
+    ];
+  } else {
+    app.state.sailing = false;
+  }
+}
+function addDirection(app, key) {
+  const index = app.state.directionDowns.indexOf(key);
+  if (index === -1) app.state.directionDowns.push(key);
+}
+function releaseDirection(app, key) {
+  app.state.directionDowns = app.state.directionDowns.filter(
+    x => x !== key
+  );
+}
+
 function initGame(app) {
   app.state = {
     fieldOfView: degToRad(45),
@@ -778,17 +966,84 @@ function initGame(app) {
     resolutionRatio: 1,
 
     seed: Math.random() * 20000 + 5000,
+    started: false,
     level: 0,
+    windStrength: 0.1,
+
+    directionDowns: [],
+    sailing: false,
+    sailTranslateY: 0,
+    sailScaleX: 1,
+    sailScaleY: 1,
+    sailFrontScaleXY: 1,
+    sailboatLocation: [0, 0],
   };
 
   renderLandMap(app);
+
+  document.addEventListener('keydown', event => {
+    if (
+      event.code === 'KeyA' || event.code === 'ArrowLeft' ||
+      event.code === 'KeyD' || event.code === 'ArrowRight'
+    ) {
+      addDirection(app, event.code);
+      updateDirection(app);
+    }
+  });
+  document.addEventListener('keyup', event => {
+    releaseDirection(app, event.code)
+    updateDirection(app);
+  });
+}
+
+function gameUpdate(app, timeDiff, now) {
+  const { state } = app;
+
+  if (state.started) {
+
+    if (state.sailing) {
+      state.sailTranslateY = Math.max(state.sailTranslateY - timeDiff * 0.0045, 0);
+      state.sailScaleY = Math.min(state.sailScaleY + timeDiff * 0.0018, 1);
+      state.sailFrontScaleXY = Math.min(state.sailFrontScaleXY + timeDiff * 0.002, 1);
+
+      let direction;
+      if (state.sailing === 'left') {
+        direction = -SAIL_DIRECTION_RAD;
+        state.sailScaleX = -1;
+      } else if (state.sailing === 'right') {
+        direction = SAIL_DIRECTION_RAD;
+        state.sailScaleX = 1;
+      }
+
+      state.sailboatLocation[0] += timeDiff * MAX_VELOCITY * Math.sin(direction);
+      state.sailboatLocation[1] -= timeDiff * MAX_VELOCITY * Math.cos(direction);
+      state.cameraViewing = [state.sailboatLocation[0], 0, state.sailboatLocation[1]];
+
+      if (state.sailboatLocation[1] < getLandMapOffset(app)[1]) {
+        state.level++;
+        state.windStrength = Math.min(state.windStrength + 0.005, 0.4);
+        console.log('next level!', {
+          level: state.level,
+          windStrength: state.windStrength,
+        });
+        renderLandMap(app);
+      }
+    } else {
+      state.sailTranslateY = Math.min(state.sailTranslateY + timeDiff * 0.0045, 2.25);
+      state.sailScaleY = Math.max(state.sailScaleY - timeDiff * 0.0018, 0.1);
+      state.sailFrontScaleXY = Math.max(state.sailFrontScaleXY - timeDiff * 0.002, 0);
+    }
+  } else if (state.sailing) {
+    state.started = true;
+  }
 }
 
 function startLoop(app, now = 0) {
   const timeDiff = now - app.time;
   app.time = now;
 
-  inputUpdate(app.input, app.state);
+  gameUpdate(app, timeDiff, now);
+
   render(app, timeDiff);
   requestAnimationFrame(now => startLoop(app, now));
 }
