@@ -18,69 +18,16 @@
       height: 100%;
       background: black;
     }
-    .btn {
-      color: white;
-      background: #0000005c;
-      border: none;
-      border-radius: 1rem;
-      cursor: pointer;
-    }
-    .btn:hover {
-      background: #00000082;
-    }
-    .btn.active {
-      background: #0000009e;
-    }
-    #status {
-      position: fixed;
-      top: 0;
-      left: 0;
-      margin: 1rem;
-    }
     #options {
       position: fixed;
       top: 0;
       right: 0;
       margin: 1rem;
     }
-    #ui {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      display: flex;
-      height: 10%;
-      margin: 1rem;
-      gap: 1rem;
-    }
-    @media (max-aspect-ratio: 1/1) {
-      #ui {
-        height: 20%;
-      }
-    }
-    #ui .sail-btn {
-      flex: 1;
-      font-size: 2rem;
-    }
-    #ui.hidden {
-      display: none;
-    }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
-  <div id="status">
-    <table>
-      <tr>
-        <td>距離：</td>
-        <td id="status-distance">0</td>
-      </tr>
-      <tr>
-        <td>時間：</td>
-        <td id="status-time">0 秒</td>
-      </tr>
-    </table>
-  </div>
   <div id="options">
     <label for="resolution-ratio">解析度</label>
     <select id="resolution-ratio" name="resolution-ratio">
@@ -88,10 +35,6 @@
       <option value="1" selected>普通</option>
       <option id="resolution-ratio-retina" value="1" disabled>Retina</option>
     </select>
-  </div>
-  <div id="ui">
-    <button class="sail-btn btn" id="sail-left">↖️</button>
-    <button class="sail-btn btn" id="sail-right">↗️</button>
   </div>
   <script type="module" src="main.js"></script>
 </body>

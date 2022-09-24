@@ -1,16 +1,16 @@
 import * as twgl from '../../lib/vendor/twgl-full.module.js';
 import * as WebGLObjLoader from '../../lib/vendor/webgl-obj-loader.esm.js';
 import listenToInputs from '../../lib/input.js';
-import { degToRad, length } from '../../lib/utils.js';
+import { degToRad } from '../../lib/utils.js';
 import { matrix4 } from '../../lib/matrix.js';
 
 const LAND_CHUNK_SIZE = 96;
 const LAND_CHUNKS = 3;
 const LAND_MAP_SIZE = [LAND_CHUNK_SIZE, LAND_CHUNK_SIZE * LAND_CHUNKS];
 const MAX_VELOCITY = 0.05;
-const ACCELERATION = 0.0035;
+const ACCELERATION = 0.00025;
 const SAIL_DIRECTION_RAD = degToRad(20);
-const DEACCELERATION = 0.0003;
+const DEACCELERATION = 0.00002;
 
 const vertexShaderSource = `#version 300 es
 in vec4 a_position;
@@ -253,16 +253,17 @@ vec3 oceanNormal(vec2 position) {
 
 const textFragmentShaderSource = `#version 300 es
 precision highp float;
+precision highp isampler2D;
 
 in vec2 v_texcoord;
 
 uniform vec4 u_bgColor;
-uniform sampler2D u_texture;
+uniform isampler2D u_texture;
 
 out vec4 outColor;
 
 void main() {
-  outColor = u_bgColor + texture(u_texture, v_texcoord);
+  outColor = u_bgColor + float(texture(u_texture, v_texcoord).r) / 65536.0;
 }
 `;
 
@@ -457,8 +458,7 @@ async function setup() {
     nullNormal: { src: [127, 127, 255, 255] },
   });
 
-  const welcomeCanvas = createWelcomeCanvas();
-  textures.text = createTextTexture(gl, welcomeCanvas);
+  textures.text = createTextTexture(gl);
 
   const framebuffers = {};
 
@@ -597,7 +597,29 @@ async function loadSailboatModel(gl, textures, programInfo) {
   return parts;
 }
 
-function createTextTexture(gl, canvas) {
+function createTextTexture(gl) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold 80px serif';
+  ctx.fillText('拖曳平移視角', canvas.width / 2, canvas.height / 5);
+
+  const secondBaseLine = 3 * canvas.height / 5;
+  const secondLineHeight = canvas.height / 7;
+  ctx.font = 'bold 70px serif';
+  ctx.fillText('透過滑鼠右鍵、滾輪', canvas.width / 2, secondBaseLine - secondLineHeight);
+  ctx.fillText('或是多指觸控手勢', canvas.width / 2, secondBaseLine);
+  ctx.fillText('對視角進行轉動、縮放', canvas.width / 2, secondBaseLine + secondLineHeight);
+
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -616,29 +638,6 @@ function createTextTexture(gl, canvas) {
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
   return texture;
-}
-
-function createWelcomeCanvas() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 1024;
-
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'white';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  ctx.font = 'bold 100px serif';
-  ctx.fillText('Catch The Wind!', canvas.width / 2, canvas.height / 5);
-
-  const secondBaseLine = 3 * canvas.height / 5;
-  const secondLineHeight = canvas.height / 7;
-  ctx.font = 'bold 70px serif';
-  ctx.fillText('按下下方按鈕或鍵盤方向鍵', canvas.width / 2, secondBaseLine - secondLineHeight);
-  ctx.fillText('打開風帆往左/右前方航行', canvas.width / 2, secondBaseLine);
-  ctx.fillText('注意不要撞到陸地', canvas.width / 2, secondBaseLine + secondLineHeight);
-
-  return canvas;
 }
 
 function renderSailboat(app, viewMatrix, programInfo) {
@@ -776,18 +775,18 @@ function renderText(app, viewMatrix, programInfo) {
 
   gl.bindVertexArray(objects.plane.vao);
 
-  const textLeftShift = gl.canvas.width / gl.canvas.height < 1.4 ? 0 : -1.6;
+  const textLeftShift = gl.canvas.width / gl.canvas.height < 1.4 ? 0 : -0.9;
   const worldMatrix = matrix4.multiply(
     matrix4.translate(textLeftShift, 0, 0),
-    matrix4.yRotate(degToRad(135)),
-    matrix4.xRotate(degToRad(75)),
-    matrix4.translate(0, 12.5, 0),
+    matrix4.xRotate(degToRad(45)),
+    matrix4.translate(0, 10, 0),
+    matrix4.scale(1, 1, LAND_CHUNKS),
   );
 
   twgl.setUniforms(programInfo, {
     u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
-    u_bgColor: [0, 0, 0, 0.3],
-    u_texture: textures.text,
+    u_bgColor: [0, 0, 0, 0.2],
+    u_texture: textures.landMap,
   });
 
   twgl.drawBufferInfo(gl, objects.plane.bufferInfo);
@@ -948,14 +947,6 @@ function updateDirection(app) {
   } else {
     app.state.sailing = false;
   }
-
-  document.getElementById('sail-left').classList.remove('active');
-  document.getElementById('sail-right').classList.remove('active');
-  if (app.state.sailing === 'left') {
-    document.getElementById('sail-left').classList.add('active');
-  } else if (app.state.sailing === 'right') {
-    document.getElementById('sail-right').classList.add('active');
-  }
 }
 function addDirection(app, key) {
   const index = app.state.directionDowns.indexOf(key);
@@ -970,7 +961,7 @@ function releaseDirection(app, key) {
 function initGame(app) {
   app.state = {
     fieldOfView: degToRad(45),
-    cameraRotationXY: [degToRad(-15), degToRad(135)],
+    cameraRotationXY: [degToRad(-45), 0],
     cameraDistance: 15,
     cameraViewing: [0, 0, 0],
     lightRotationXY: [degToRad(20), degToRad(-60)],
@@ -978,7 +969,6 @@ function initGame(app) {
 
     seed: Math.random() * 20000 + 5000,
     started: false,
-    startedTime: 0,
     level: 0,
     windStrength: 0.1,
 
@@ -993,25 +983,6 @@ function initGame(app) {
   };
 
   renderLandMap(app);
-
-  app.gl.canvas.addEventListener('contextmenu', event => event.preventDefault());
-
-  document.getElementById('sail-left').addEventListener('pointerdown', () => {
-    addDirection(app, 'screenLeft');
-    updateDirection(app);
-  });
-  document.getElementById('sail-right').addEventListener('pointerdown', () => {
-    addDirection(app, 'screenRight');
-    updateDirection(app);
-  });
-  document.getElementById('sail-left').addEventListener('pointerup', () => {
-    releaseDirection(app, 'screenLeft')
-    updateDirection(app);
-  });
-  document.getElementById('sail-right').addEventListener('pointerup', () => {
-    releaseDirection(app, 'screenRight')
-    updateDirection(app);
-  });
 
   document.addEventListener('keydown', event => {
     if (
@@ -1032,8 +1003,6 @@ function gameUpdate(app, timeDiff, now) {
   const { state } = app;
 
   if (state.started) {
-    state.cameraRotationXY[1] = Math.max(state.cameraRotationXY[1] - timeDiff * 0.0045, 0);
-    state.cameraDistance = Math.min(state.cameraDistance + timeDiff * 0.01, 25);
 
     if (state.sailing) {
       state.sailTranslateY = Math.max(state.sailTranslateY - timeDiff * 0.0045, 0);
@@ -1048,8 +1017,12 @@ function gameUpdate(app, timeDiff, now) {
         direction = SAIL_DIRECTION_RAD;
         state.sailScaleX = 1;
       }
-      state.sailboatVelocity[0] += state.windStrength * timeDiff * 0.0625 * ACCELERATION * Math.sin(direction);
-      state.sailboatVelocity[1] -= state.windStrength * timeDiff * 0.0625 * ACCELERATION * Math.cos(direction);
+      state.sailboatVelocity[0] += (
+        state.windStrength * timeDiff * ACCELERATION * Math.sin(direction)
+      );
+      state.sailboatVelocity[1] -= (
+        state.windStrength * timeDiff * ACCELERATION * Math.cos(direction)
+      );
 
     } else {
       state.sailTranslateY = Math.min(state.sailTranslateY + timeDiff * 0.0045, 2.25);
@@ -1057,16 +1030,13 @@ function gameUpdate(app, timeDiff, now) {
       state.sailFrontScaleXY = Math.max(state.sailFrontScaleXY - timeDiff * 0.002, 0);
     }
 
-    const velocity = length(state.sailboatVelocity);
-    const slowDownRatio = getSlowDownRatio(velocity);
-    state.sailboatVelocity[0] *= slowDownRatio;
-    state.sailboatVelocity[1] *= slowDownRatio;
+    const slowDownFactor = calcSlowDownFactor(state.sailboatVelocity, timeDiff);
+    state.sailboatVelocity[0] *= slowDownFactor;
+    state.sailboatVelocity[1] *= slowDownFactor;
 
     state.sailboatLocation[0] += state.sailboatVelocity[0] * timeDiff;
     state.sailboatLocation[1] += state.sailboatVelocity[1] * timeDiff;
     state.cameraViewing = [state.sailboatLocation[0], 0, state.sailboatLocation[1]];
-
-    updateStatus(app);
 
     if (state.sailboatLocation[1] < getLandMapOffset(app)[1]) {
       state.level++;
@@ -1079,19 +1049,15 @@ function gameUpdate(app, timeDiff, now) {
     }
   } else if (state.sailing) {
     state.started = true;
-    state.startedTime = now;
   }
 }
 
-function getSlowDownRatio(velocity) {
-  const maxCap = velocity > MAX_VELOCITY ? MAX_VELOCITY / velocity : 1;
-  if (velocity < DEACCELERATION) return 0;
-  return maxCap * (velocity - DEACCELERATION) / velocity;
-}
-
-function updateStatus(app) {
-  document.getElementById('status-distance').textContent = (-app.state.sailboatLocation[1]).toFixed(2);
-  document.getElementById('status-time').textContent = `${((app.time - app.state.startedTime) / 1000).toFixed(1)} 秒`;
+function calcSlowDownFactor(velocity, timeDiff) {
+  const velocityLength = Math.sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
+  if (velocityLength > MAX_VELOCITY) return MAX_VELOCITY / velocityLength;
+  const slowDownLength = timeDiff * DEACCELERATION;
+  if (velocityLength < slowDownLength) return 0;
+  return (velocityLength - slowDownLength) / velocityLength;
 }
 
 function startLoop(app, now = 0) {
