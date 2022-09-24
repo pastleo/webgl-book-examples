@@ -11,6 +11,7 @@ const MAX_VELOCITY = 0.05;
 const ACCELERATION = 0.00025;
 const SAIL_DIRECTION_RAD = degToRad(20);
 const DEACCELERATION = 0.00002;
+const SAILBOAT_COLLISION_BORDERS = [0.5, 0.5, 2.75, 1]; // [+x, -x, +z, -z]
 
 const vertexShaderSource = `#version 300 es
 in vec4 a_position;
@@ -66,6 +67,7 @@ in vec3 v_surfaceToViewer;
 in vec3 v_surfaceToLight;
 in mat3 v_normalMatrix;
 in vec4 v_lightProjection;
+in vec4 v_worldPosition;
 
 uniform sampler2D u_normalMap;
 uniform vec3 u_diffuse;
@@ -117,7 +119,7 @@ void main() {
       u_emissive,
       ambient, vec3(1, 1, 1)
     ),
-    1
+    v_worldPosition.y < -0.1 ? 0 : 1
   );
 }
 `;
@@ -641,13 +643,38 @@ function createWelcomeCanvas() {
   return canvas;
 }
 
+function createGameOverCanvas(app) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold 100px serif';
+  ctx.fillText('Game Over', canvas.width / 2, canvas.height / 5);
+
+  const secondBaseLine = 2 * canvas.height / 3;
+  const secondLineHeight = canvas.height / 8;
+  ctx.font = 'bold 70px serif';
+  ctx.fillText('撞了，你的分數：', canvas.width / 2, secondBaseLine - secondLineHeight * 2);
+  ctx.fillText('可利用滑鼠、觸控移動視角', canvas.width / 2, secondBaseLine);
+  ctx.fillText('或是重新整理再來一局', canvas.width / 2, secondBaseLine + secondLineHeight);
+
+  ctx.font = 'bold 90px serif';
+  ctx.fillText(app.state.score, canvas.width / 2, secondBaseLine - secondLineHeight);
+  return canvas;
+}
+
 function renderSailboat(app, viewMatrix, programInfo) {
   const { gl, textures, objects, state, time } = app;
 
   const worldMatrix = matrix4.multiply(
     matrix4.translate(state.sailboatLocation[0], 0, state.sailboatLocation[1]),
-    matrix4.xRotate(Math.sin(time * 0.0011) * 0.03 + 0.03),
-    matrix4.translate(0, Math.sin(time * 0.0017) * 0.05, 0),
+    matrix4.xRotate(Math.sin(time * 0.0011) * 0.03 + 0.03 + state.sailboatRotationX),
+    matrix4.translate(0, Math.sin(time * 0.0017) * 0.05 + state.sailboatSinking, 0),
   );
   const sailWorldMatrix = matrix4.multiply(
     worldMatrix,
@@ -690,6 +717,34 @@ function renderSailboat(app, viewMatrix, programInfo) {
   });
 
   gl.enable(gl.CULL_FACE);
+
+  // { // render collision borders
+  //   gl.bindVertexArray(objects.sphere.vao);
+  //   twgl.setUniforms(programInfo, {
+  //     u_diffuse: [0.5, 0.5, 0.5],
+  //     u_diffuseMap: textures.null,
+  //     u_specularExponent: 200,
+  //     u_emissive: [0, 0, 0],
+  //     u_ambient: [0.4, 0.4, 0.4],
+  //   });
+  //   [
+  //     [SAILBOAT_COLLISION_BORDERS[0], 0],
+  //     [-SAILBOAT_COLLISION_BORDERS[1], 0],
+  //     [0, SAILBOAT_COLLISION_BORDERS[2]],
+  //     [0, -SAILBOAT_COLLISION_BORDERS[3]],
+  //   ].forEach(d => {
+  //     const worldMatrix = matrix4.multiply(
+  //       matrix4.translate(state.sailboatLocation[0] + d[0], 0, state.sailboatLocation[1] + d[1]),
+  //       matrix4.scale(0.2, 0.2, 0.2),
+  //     );
+  //     twgl.setUniforms(programInfo, {
+  //       u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
+  //       u_worldMatrix: worldMatrix,
+  //       u_normalMatrix: matrix4.transpose(matrix4.inverse(worldMatrix)),
+  //     })
+  //     twgl.drawBufferInfo(gl, objects.sphere.bufferInfo);
+  //   });
+  // }
 }
 
 function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
@@ -777,12 +832,17 @@ function renderText(app, viewMatrix, programInfo) {
   gl.bindVertexArray(objects.plane.vao);
 
   const textLeftShift = gl.canvas.width / gl.canvas.height < 1.4 ? 0 : -1.6;
-  const worldMatrix = matrix4.multiply(
-    matrix4.translate(textLeftShift, 0, 0),
-    matrix4.yRotate(degToRad(135)),
-    matrix4.xRotate(degToRad(75)),
-    matrix4.translate(0, 12.5, 0),
-  );
+  const worldMatrix = !app.state.gameOver ?
+    matrix4.multiply(
+      matrix4.translate(textLeftShift, 0, 0),
+      matrix4.yRotate(degToRad(135)),
+      matrix4.xRotate(degToRad(75)),
+      matrix4.translate(0, 12.5, 0),
+    ) : matrix4.multiply(
+      matrix4.translate(app.state.sailboatLocation[0], 0, app.state.sailboatLocation[1]),
+      matrix4.xRotate(degToRad(75)),
+      matrix4.translate(0, 22.5, 0),
+    );
 
   twgl.setUniforms(programInfo, {
     u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
@@ -872,18 +932,18 @@ function render(app) {
     renderSailboat(app, lightProjectionViewMatrix, programInfos.depth);
   }
 
-  gl.useProgram(programInfos.main.program);
-  twgl.setUniforms(programInfos.main, globalUniforms);
-
   { // reflection
     twgl.bindFramebufferInfo(gl, framebuffers.reflection);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    renderSailboat(app, reflectionViewMatrix, programInfos.main);
-
     gl.useProgram(programInfos.skybox.program);
     renderSkybox(app, projectionMatrix, inversedReflectionCameraMatrix);
+
+    gl.useProgram(programInfos.main.program);
+    twgl.setUniforms(programInfos.main, globalUniforms);
+
+    renderSailboat(app, reflectionViewMatrix, programInfos.main);
   }
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -926,6 +986,44 @@ function renderLandMap(app) {
   });
 
   twgl.drawBufferInfo(gl, objects.xyQuad.bufferInfo);
+}
+
+function checkSailboatCollision(app) {
+  const { gl, framebuffers, state } = app;
+
+  twgl.bindFramebufferInfo(gl, framebuffers.landMap);
+
+  const landMapOffset = getLandMapOffset(app);
+
+  const left = Math.floor(
+    ((state.sailboatLocation[0] - SAILBOAT_COLLISION_BORDERS[1] - landMapOffset[0]) / LAND_MAP_SIZE[0] * 1 + 0.5) * framebuffers.landMap.width
+  );
+  const right = Math.ceil(
+    ((state.sailboatLocation[0] + SAILBOAT_COLLISION_BORDERS[0] - landMapOffset[0]) / LAND_MAP_SIZE[0] * 1 + 0.5) * framebuffers.landMap.width
+  );
+  const top = Math.floor(
+    ((state.sailboatLocation[1] + SAILBOAT_COLLISION_BORDERS[2] - landMapOffset[1]) / LAND_MAP_SIZE[1] * -1 + 0.5) * framebuffers.landMap.height
+  );
+  const bottom = Math.ceil(
+    ((state.sailboatLocation[1] - SAILBOAT_COLLISION_BORDERS[3] - landMapOffset[1]) / LAND_MAP_SIZE[1] * -1 + 0.5) * framebuffers.landMap.height
+  );
+
+  const width = Math.max(right - left + 1, 1);
+  const height = Math.max(bottom - top + 1, 1);
+  const format = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+  const dataStep = format === gl.RGBA_INTEGER ? 4 : 1;
+  const type = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+  const pixels = app.collisionCheckPixels ?? new Int32Array(
+    width * height * 2 * dataStep
+  );
+  gl.readPixels(
+    left, top, width, height, format, type, pixels,
+  );
+  app.collisionCheckPixels = pixels;
+  for (let i = 0, len = width * height; i < len; i += dataStep) {
+    if (pixels[i] > 0) return true;
+  }
+  return false;
 }
 
 function getLandMapOffset(app) {
@@ -978,6 +1076,7 @@ function initGame(app) {
 
     seed: Math.random() * 20000 + 5000,
     started: false,
+    gameOver: false,
     startedTime: 0,
     level: 0,
     windStrength: 0.1,
@@ -988,6 +1087,9 @@ function initGame(app) {
     sailScaleX: 1,
     sailScaleY: 1,
     sailFrontScaleXY: 1,
+    sailboatRotationX: degToRad(0),
+    sailboatSinking: 0,
+
     sailboatLocation: [0, 0],
     sailboatVelocity: [0, 0],
   };
@@ -1026,66 +1128,92 @@ function initGame(app) {
     releaseDirection(app, event.code)
     updateDirection(app);
   });
+
+  document.getElementById('refresh').addEventListener('click', () => {
+    window.location.reload();
+  });
 }
 
 function gameUpdate(app, timeDiff, now) {
   const { state } = app;
 
   if (state.started) {
-    state.cameraRotationXY[1] = (
-      Math.max(state.cameraRotationXY[1] - timeDiff * 0.0045, 0)
-    );
-    state.cameraDistance = Math.min(state.cameraDistance + timeDiff * 0.01, 25);
+    if (!state.gameOver) {
+      state.cameraRotationXY[1] = Math.max(state.cameraRotationXY[1] - timeDiff * 0.0045, 0);
+      state.cameraDistance = Math.min(state.cameraDistance + timeDiff * 0.01, 25);
 
-    if (state.sailing) {
-      state.sailTranslateY = Math.max(state.sailTranslateY - timeDiff * 0.0045, 0);
-      state.sailScaleY = Math.min(state.sailScaleY + timeDiff * 0.0018, 1);
-      state.sailFrontScaleXY = Math.min(state.sailFrontScaleXY + timeDiff * 0.002, 1);
+      if (state.sailing) {
+        state.sailTranslateY = Math.max(state.sailTranslateY - timeDiff * 0.0045, 0);
+        state.sailScaleY = Math.min(state.sailScaleY + timeDiff * 0.0018, 1);
+        state.sailFrontScaleXY = Math.min(state.sailFrontScaleXY + timeDiff * 0.002, 1);
 
-      let direction;
-      if (state.sailing === 'left') {
-        direction = -SAIL_DIRECTION_RAD;
-        state.sailScaleX = -1;
-      } else if (state.sailing === 'right') {
-        direction = SAIL_DIRECTION_RAD;
-        state.sailScaleX = 1;
+        let direction;
+        if (state.sailing === 'left') {
+          direction = -SAIL_DIRECTION_RAD;
+          state.sailScaleX = -1;
+        } else if (state.sailing === 'right') {
+          direction = SAIL_DIRECTION_RAD;
+          state.sailScaleX = 1;
+        }
+        state.sailboatVelocity[0] += (
+          state.windStrength * timeDiff * ACCELERATION * Math.sin(direction)
+        );
+        state.sailboatVelocity[1] -= (
+          state.windStrength * timeDiff * ACCELERATION * Math.cos(direction)
+        );
+
+      } else {
+        state.sailTranslateY = Math.min(state.sailTranslateY + timeDiff * 0.0045, 2.25);
+        state.sailScaleY = Math.max(state.sailScaleY - timeDiff * 0.0018, 0.1);
+        state.sailFrontScaleXY = Math.max(state.sailFrontScaleXY - timeDiff * 0.002, 0);
       }
-      state.sailboatVelocity[0] += (
-        state.windStrength * timeDiff * ACCELERATION * Math.sin(direction)
-      );
-      state.sailboatVelocity[1] -= (
-        state.windStrength * timeDiff * ACCELERATION * Math.cos(direction)
-      );
 
+      const slowDownFactor = calcSlowDownFactor(state.sailboatVelocity, timeDiff);
+      state.sailboatVelocity[0] *= slowDownFactor;
+      state.sailboatVelocity[1] *= slowDownFactor;
+
+      state.sailboatLocation[0] += state.sailboatVelocity[0] * timeDiff;
+      state.sailboatLocation[1] += state.sailboatVelocity[1] * timeDiff;
+      state.cameraViewing = [state.sailboatLocation[0], 0, state.sailboatLocation[1]];
+
+      updateStatus(app);
+
+      if (checkSailboatCollision(app)) {
+        state.gameOver = true;
+        state.score = Math.max(
+          Math.floor(
+            -state.sailboatLocation[1] - 4 * (app.time - state.startedTime) / 1000
+          ),
+          0
+        );
+        gameOver(app);
+        
+      } else if (state.sailboatLocation[1] < getLandMapOffset(app)[1]) {
+        state.level++;
+        state.windStrength = Math.min(state.windStrength + 0.005, 0.4);
+        console.log('next level!', {
+          level: state.level,
+          windStrength: state.windStrength,
+        });
+        renderLandMap(app);
+      }
     } else {
-      state.sailTranslateY = Math.min(state.sailTranslateY + timeDiff * 0.0045, 2.25);
-      state.sailScaleY = Math.max(state.sailScaleY - timeDiff * 0.0018, 0.1);
-      state.sailFrontScaleXY = Math.max(state.sailFrontScaleXY - timeDiff * 0.002, 0);
+      state.sailboatRotationX = Math.min(state.sailboatRotationX + timeDiff * 0.00005, degToRad(60));
+      state.sailboatSinking = Math.max(state.sailboatSinking - timeDiff * 0.00005, -1);
     }
 
-    const slowDownFactor = calcSlowDownFactor(state.sailboatVelocity, timeDiff);
-    state.sailboatVelocity[0] *= slowDownFactor;
-    state.sailboatVelocity[1] *= slowDownFactor;
-
-    state.sailboatLocation[0] += state.sailboatVelocity[0] * timeDiff;
-    state.sailboatLocation[1] += state.sailboatVelocity[1] * timeDiff;
-    state.cameraViewing = [state.sailboatLocation[0], 0, state.sailboatLocation[1]];
-
-    updateStatus(app);
-
-    if (state.sailboatLocation[1] < getLandMapOffset(app)[1]) {
-      state.level++;
-      state.windStrength = Math.min(state.windStrength + 0.005, 0.4);
-      console.log('next level!', {
-        level: state.level,
-        windStrength: state.windStrength,
-      });
-      renderLandMap(app);
-    }
   } else if (state.sailing) {
     state.started = true;
     state.startedTime = now;
   }
+}
+
+function gameOver(app) {
+  app.input = listenToInputs(app.gl.canvas, app.state);
+  document.getElementById('ui').classList.add('hidden');
+  document.getElementById('refresh').classList.remove('hidden');
+  const gameOverCanvas = createGameOverCanvas(app);
+  app.textures.text = createTextTexture(gl, gameOverCanvas);
 }
 
 function calcSlowDownFactor(velocity, timeDiff) {
@@ -1097,12 +1225,8 @@ function calcSlowDownFactor(velocity, timeDiff) {
 }
 
 function updateStatus(app) {
-  document.getElementById('status-distance').textContent = (
-    (-app.state.sailboatLocation[1]).toFixed(2)
-  );
-  document.getElementById('status-time').textContent = (
-    `${((app.time - app.state.startedTime) / 1000).toFixed(1)} 秒`
-  );
+  document.getElementById('status-distance').textContent = (-app.state.sailboatLocation[1]).toFixed(2);
+  document.getElementById('status-time').textContent = `${((app.time - app.state.startedTime) / 1000).toFixed(1)} 秒`;
 }
 
 function startLoop(app, now = 0) {
@@ -1121,7 +1245,6 @@ async function main() {
   window.gl = app.gl;
 
   initGame(app);
-  app.input = listenToInputs(app.gl.canvas, app.state);
 
   const resolutionSelect = document.getElementById('resolution-ratio');
   resolutionSelect.addEventListener('change', () => {

@@ -43,6 +43,13 @@
       right: 0;
       margin: 1rem;
     }
+    #refresh {
+      margin-right: 0.5rem;
+      padding: 0.2rem 0.5rem;
+    }
+    #refresh.hidden {
+      display: none;
+    }
     #ui {
       position: fixed;
       bottom: 0;
@@ -82,6 +89,7 @@
     </table>
   </div>
   <div id="options">
+    <button class="btn hidden" id="refresh">重新整理</button>
     <label for="resolution-ratio">解析度</label>
     <select id="resolution-ratio" name="resolution-ratio">
       <option value="0.75">低</option>
