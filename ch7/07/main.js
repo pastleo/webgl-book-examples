@@ -846,7 +846,7 @@ function renderText(app, viewMatrix, programInfo) {
 
   twgl.setUniforms(programInfo, {
     u_matrix: matrix4.multiply(viewMatrix, worldMatrix),
-    u_bgColor: [0, 0, 0, 0.3],
+    u_bgColor: [0, 0, 0, 0.2],
     u_texture: textures.text,
   });
 
@@ -1030,23 +1030,27 @@ function getLandMapOffset(app) {
   return [0, -LAND_CHUNK_SIZE * (app.state.level + (LAND_CHUNKS * 0.5 - 0.5))];
 }
 
-const DIRECTION_KEYMAP = {
-  KeyA: 'left',
-  KeyD: 'right',
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  screenLeft: 'left',
-  screenRight: 'right',
+function pressDirection(app, direction) {
+  if (app.state.directionPresseds[direction]) return;
+  app.state.sailing = direction;
+  app.state.directionPresseds[direction] = true;
+
+  updateDirection(app);
 }
-function updateDirection(app) {
-  if (app.state.directionDowns.length > 0) {
-    app.state.sailing = DIRECTION_KEYMAP[
-      app.state.directionDowns[app.state.directionDowns.length - 1]
-    ];
+function releaseDirection(app, direction) {
+  app.state.directionPresseds[direction] = false;
+
+  if (app.state.directionPresseds.left) {
+    app.state.sailing = 'left';
+  } else if (app.state.directionPresseds.right) {
+    app.state.sailing = 'right';
   } else {
     app.state.sailing = false;
   }
 
+  updateDirection(app);
+}
+function updateDirection(app) {
   document.getElementById('sail-left').classList.remove('active');
   document.getElementById('sail-right').classList.remove('active');
   if (app.state.sailing === 'left') {
@@ -1054,15 +1058,6 @@ function updateDirection(app) {
   } else if (app.state.sailing === 'right') {
     document.getElementById('sail-right').classList.add('active');
   }
-}
-function addDirection(app, key) {
-  const index = app.state.directionDowns.indexOf(key);
-  if (index === -1) app.state.directionDowns.push(key);
-}
-function releaseDirection(app, key) {
-  app.state.directionDowns = app.state.directionDowns.filter(
-    x => x !== key
-  );
 }
 
 function initGame(app) {
@@ -1081,7 +1076,7 @@ function initGame(app) {
     level: 0,
     windStrength: 0.1,
 
-    directionDowns: [],
+    directionPresseds: { left: false, right: false },
     sailing: false,
     sailTranslateY: 0,
     sailScaleX: 1,
@@ -1096,37 +1091,39 @@ function initGame(app) {
 
   renderLandMap(app);
 
-  app.gl.canvas.addEventListener('contextmenu', event => event.preventDefault());
+  const sailLeftBtn = document.getElementById('sail-left');
+  const sailRightBtn = document.getElementById('sail-right');
 
-  document.getElementById('sail-left').addEventListener('pointerdown', () => {
-    addDirection(app, 'screenLeft');
-    updateDirection(app);
+  [sailLeftBtn, sailRightBtn].forEach(element => {
+    element.addEventListener('touchstart', event => event.preventDefault());
   });
-  document.getElementById('sail-right').addEventListener('pointerdown', () => {
-    addDirection(app, 'screenRight');
-    updateDirection(app);
+
+  sailLeftBtn.addEventListener('pointerdown', () => {
+    pressDirection(app, 'left');
   });
-  document.getElementById('sail-left').addEventListener('pointerup', () => {
-    releaseDirection(app, 'screenLeft')
-    updateDirection(app);
+  sailRightBtn.addEventListener('pointerdown', () => {
+    pressDirection(app, 'right');
   });
-  document.getElementById('sail-right').addEventListener('pointerup', () => {
-    releaseDirection(app, 'screenRight')
-    updateDirection(app);
+  sailLeftBtn.addEventListener('pointerup', () => {
+    releaseDirection(app, 'left')
+  });
+  sailRightBtn.addEventListener('pointerup', () => {
+    releaseDirection(app, 'right')
   });
 
   document.addEventListener('keydown', event => {
-    if (
-      event.code === 'KeyA' || event.code === 'ArrowLeft' ||
-      event.code === 'KeyD' || event.code === 'ArrowRight'
-    ) {
-      addDirection(app, event.code);
-      updateDirection(app);
+    if (event.code === 'KeyA' || event.code === 'ArrowLeft') {
+      pressDirection(app, 'left');
+    } else if (event.code === 'KeyD' || event.code === 'ArrowRight') {
+      pressDirection(app, 'right');
     }
   });
   document.addEventListener('keyup', event => {
-    releaseDirection(app, event.code)
-    updateDirection(app);
+    if (event.code === 'KeyA' || event.code === 'ArrowLeft') {
+      releaseDirection(app, 'left');
+    } else if (event.code === 'KeyD' || event.code === 'ArrowRight') {
+      releaseDirection(app, 'right');
+    }
   });
 
   document.getElementById('refresh').addEventListener('click', () => {

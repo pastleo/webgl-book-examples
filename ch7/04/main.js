@@ -929,31 +929,21 @@ function getLandMapOffset(app) {
   return [0, -LAND_CHUNK_SIZE * (app.state.level + (LAND_CHUNKS * 0.5 - 0.5))];
 }
 
-const DIRECTION_KEYMAP = {
-  KeyA: 'left',
-  KeyD: 'right',
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  screenLeft: 'left',
-  screenRight: 'right',
+function pressDirection(app, direction) {
+  if (app.state.directionPresseds[direction]) return;
+  app.state.sailing = direction;
+  app.state.directionPresseds[direction] = true;
 }
-function updateDirection(app) {
-  if (app.state.directionDowns.length > 0) {
-    app.state.sailing = DIRECTION_KEYMAP[
-      app.state.directionDowns[app.state.directionDowns.length - 1]
-    ];
+function releaseDirection(app, direction) {
+  app.state.directionPresseds[direction] = false;
+
+  if (app.state.directionPresseds.left) {
+    app.state.sailing = 'left';
+  } else if (app.state.directionPresseds.right) {
+    app.state.sailing = 'right';
   } else {
     app.state.sailing = false;
   }
-}
-function addDirection(app, key) {
-  const index = app.state.directionDowns.indexOf(key);
-  if (index === -1) app.state.directionDowns.push(key);
-}
-function releaseDirection(app, key) {
-  app.state.directionDowns = app.state.directionDowns.filter(
-    x => x !== key
-  );
 }
 
 function initGame(app) {
@@ -970,7 +960,7 @@ function initGame(app) {
     level: 0,
     windStrength: 0.1,
 
-    directionDowns: [],
+    directionPresseds: { left: false, right: false },
     sailing: false,
     sailTranslateY: 0,
     sailScaleX: 1,
@@ -982,17 +972,18 @@ function initGame(app) {
   renderLandMap(app);
 
   document.addEventListener('keydown', event => {
-    if (
-      event.code === 'KeyA' || event.code === 'ArrowLeft' ||
-      event.code === 'KeyD' || event.code === 'ArrowRight'
-    ) {
-      addDirection(app, event.code);
-      updateDirection(app);
+    if (event.code === 'KeyA' || event.code === 'ArrowLeft') {
+      pressDirection(app, 'left');
+    } else if (event.code === 'KeyD' || event.code === 'ArrowRight') {
+      pressDirection(app, 'right');
     }
   });
   document.addEventListener('keyup', event => {
-    releaseDirection(app, event.code)
-    updateDirection(app);
+    if (event.code === 'KeyA' || event.code === 'ArrowLeft') {
+      releaseDirection(app, 'left');
+    } else if (event.code === 'KeyD' || event.code === 'ArrowRight') {
+      releaseDirection(app, 'right');
+    }
   });
 }
 
