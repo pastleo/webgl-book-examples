@@ -1051,12 +1051,12 @@ function releaseDirection(app, direction) {
   updateDirection(app);
 }
 function updateDirection(app) {
-  document.getElementById('sail-left').classList.remove('active');
-  document.getElementById('sail-right').classList.remove('active');
   if (app.state.sailing === 'left') {
     document.getElementById('sail-left').classList.add('active');
+    document.getElementById('sail-right').classList.remove('active');
   } else if (app.state.sailing === 'right') {
     document.getElementById('sail-right').classList.add('active');
+    document.getElementById('sail-left').classList.remove('active');
   }
 }
 
@@ -1095,7 +1095,9 @@ function initGame(app) {
   const sailRightBtn = document.getElementById('sail-right');
 
   [sailLeftBtn, sailRightBtn].forEach(element => {
-    element.addEventListener('touchstart', event => event.preventDefault());
+    element.addEventListener('touchstart', event => {
+      event.preventDefault()
+    });
   });
 
   sailLeftBtn.addEventListener('pointerdown', () => {
