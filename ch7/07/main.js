@@ -536,6 +536,18 @@ async function setup() {
     };
   }
 
+  { // cube
+    const attribs = twgl.primitives.createCubeVertices();
+    const bufferInfo = twgl.createBufferInfoFromArrays(gl, attribs);
+    const vao = twgl.createVAOFromBufferInfo(gl, programInfos.main, bufferInfo);
+
+    objects.cube = {
+      attribs,
+      bufferInfo,
+      vao,
+    };
+  }
+
   objects.sailboat = await loadSailboatModel(gl, textures, programInfos.main);
 
   gl.enable(gl.CULL_FACE);
@@ -717,6 +729,35 @@ function renderSailboat(app, viewMatrix, programInfo) {
   });
 
   gl.enable(gl.CULL_FACE);
+
+  { // render collision borders
+    gl.bindVertexArray(objects.cube.vao);
+
+    const rangeX = SAILBOAT_COLLISION_BORDERS[0] + SAILBOAT_COLLISION_BORDERS[1];
+    const rangeZ = SAILBOAT_COLLISION_BORDERS[2] + SAILBOAT_COLLISION_BORDERS[3];
+    const x = (SAILBOAT_COLLISION_BORDERS[0] - SAILBOAT_COLLISION_BORDERS[1]) / 2;
+    const z = (SAILBOAT_COLLISION_BORDERS[2] - SAILBOAT_COLLISION_BORDERS[3]) / 2;
+    twgl.setUniforms(programInfo, {
+      u_diffuse: [0, 0, 0],
+      u_diffuseMap: textures.null,
+      u_specularExponent: 200,
+      u_emissive: [1, 0.75, 0],
+      u_ambient: [0.4, 0.4, 0.4],
+    });
+
+    const bordersWorldMatrix = matrix4.multiply(
+      worldMatrix,
+      matrix4.translate(x, 0, z),
+      matrix4.scale(rangeX, 1.5, rangeZ),
+    );
+    twgl.setUniforms(programInfo, {
+      u_matrix: matrix4.multiply(viewMatrix, bordersWorldMatrix),
+      u_bordersWorldMatrix: bordersWorldMatrix,
+      u_normalMatrix: matrix4.transpose(matrix4.inverse(bordersWorldMatrix)),
+    })
+    twgl.drawBufferInfo(gl, objects.cube.bufferInfo);
+  }
+
 }
 
 function renderOcean(app, viewMatrix, reflectionViewMatrix, programInfo) {
