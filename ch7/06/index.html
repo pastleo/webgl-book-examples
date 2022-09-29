@@ -18,6 +18,14 @@
       height: 100%;
       background: black;
     }
+    #loading {
+      position: absolute;
+      top: 20%; left: 50%;
+      transform: translate(-50%, 0);
+      font-size: 2rem;
+      color: white;
+      white-space: pre-line;
+    }
     .btn {
       background: #00000033;
       border: none; border-radius: 1rem; outline: none;
@@ -56,6 +64,7 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <code id="loading">Loading...</code>
   <div id="status">
     <table>
       <tr>
