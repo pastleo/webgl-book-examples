@@ -18,6 +18,14 @@
       height: 100%;
       background: black;
     }
+    #loading {
+      position: absolute;
+      top: 20%; left: 50%;
+      transform: translate(-50%, 0);
+      font-size: 2rem;
+      color: white;
+      white-space: pre-line;
+    }
     #options {
       position: fixed;
       top: 0;
@@ -28,6 +36,7 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <code id="loading">Loading...</code>
   <div id="options">
     <label for="resolution-ratio">解析度</label>
     <select id="resolution-ratio" name="resolution-ratio">

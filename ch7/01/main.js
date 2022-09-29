@@ -794,23 +794,29 @@ function startLoop(app, now = 0) {
 }
 
 async function main() {
-  const app = await setup();
-  window.app = app;
-  window.gl = app.gl;
+  const loadingText = document.getElementById('loading');
+  try {
+    const app = await setup();
+    window.app = app;
+    window.gl = app.gl;
 
-  initGame(app);
-  app.input = listenToInputs(app.gl.canvas, app.state);
+    initGame(app);
+    app.input = listenToInputs(app.gl.canvas, app.state);
 
-  const resolutionSelect = document.getElementById('resolution-ratio');
-  resolutionSelect.addEventListener('change', () => {
-    app.state.resolutionRatio = parseFloat(resolutionSelect.value);
-  });
-  if (window.devicePixelRatio > 1) {
-    const retinaOption = document.getElementById('resolution-ratio-retina');
-    retinaOption.value = window.devicePixelRatio;
-    retinaOption.disabled = false;
+    const resolutionSelect = document.getElementById('resolution-ratio');
+    resolutionSelect.addEventListener('change', () => {
+      app.state.resolutionRatio = parseFloat(resolutionSelect.value);
+    });
+    if (window.devicePixelRatio > 1) {
+      const retinaOption = document.getElementById('resolution-ratio-retina');
+      retinaOption.value = window.devicePixelRatio;
+      retinaOption.disabled = false;
+    }
+    loadingText.remove();
+
+    startLoop(app);
+  } catch (error) {
+    loadingText.textContent = `Your browser might not be supported.\nerror: ${error.message}`;
   }
-
-  startLoop(app);
 }
 main();
