@@ -957,8 +957,11 @@ function updateDirection(app) {
     document.getElementById('sail-left').classList.add('active');
     document.getElementById('sail-right').classList.remove('active');
   } else if (app.state.sailing === 'right') {
-    document.getElementById('sail-right').classList.add('active');
     document.getElementById('sail-left').classList.remove('active');
+    document.getElementById('sail-right').classList.add('active');
+  } else {
+    document.getElementById('sail-left').classList.remove('active');
+    document.getElementById('sail-right').classList.remove('active');
   }
 }
 
