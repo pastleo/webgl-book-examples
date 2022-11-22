@@ -76,9 +76,7 @@ void main() {
   );
 
   outColor = vec4(
-    color * colorLight +
-    u_specular * specularBrightness +
-    u_emissive,
+    normal,
     1
   );
 }
