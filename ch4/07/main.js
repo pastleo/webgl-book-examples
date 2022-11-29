@@ -16,25 +16,17 @@ uniform vec3 u_worldLightPosition;
 out vec2 v_texcoord;
 out vec3 v_surfaceToViewer;
 out vec3 v_surfaceToLight;
-out mat3 v_normalMatrix;
+out vec3 v_normal;
+out vec3 v_worldPosition;
 
 void main() {
   gl_Position = u_matrix * a_position;
   v_texcoord = vec2(a_texcoord.x, 1.0 - a_texcoord.y);
 
-  vec3 normal = mat3(u_normalMatrix) * a_normal;
-  vec3 normalMatrixI = normal.y >= 1.0 ?
-    vec3(1, 0, 0) :
-    normalize(cross(vec3(0, 1, 0), normal));
-  vec3 normalMatrixJ = normalize(cross(normal, normalMatrixI));
-
-  v_normalMatrix = mat3(
-    normalMatrixI,
-    normalMatrixJ,
-    normal
-  );
+  v_normal = mat3(u_normalMatrix) * a_normal;
 
   vec3 worldPosition = (u_worldMatrix * a_position).xyz;
+  v_worldPosition = worldPosition;
   v_surfaceToViewer = u_worldViewerPosition - worldPosition;
 
   v_surfaceToLight = u_worldLightPosition - worldPosition;
@@ -47,7 +39,8 @@ precision highp float;
 in vec2 v_texcoord;
 in vec3 v_surfaceToViewer;
 in vec3 v_surfaceToLight;
-in mat3 v_normalMatrix;
+in vec3 v_normal;
+in vec3 v_worldPosition;
 
 uniform vec3 u_color;
 uniform sampler2D u_texture;
@@ -58,11 +51,14 @@ uniform sampler2D u_normalMap;
 
 out vec4 outColor;
 
+mat3 cotangentFrame( vec3 N, vec3 p, vec2 uv );
+
 void main() {
   vec3 color = u_color + texture(u_texture, v_texcoord).rgb;
 
   vec3 normal = texture(u_normalMap, v_texcoord).xyz * 2.0 - 1.0;
-  normal = normalize(v_normalMatrix * normal);
+  mat3 normalMatrix = cotangentFrame(v_normal, v_worldPosition, v_texcoord);
+  normal = normalize(normalMatrix * normal);
 
   vec3 surfaceToLightDir = normalize(v_surfaceToLight);
 
@@ -81,6 +77,26 @@ void main() {
     u_emissive,
     1
   );
+}
+
+// https://gamedev.stackexchange.com/a/86543
+mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv)
+{
+  // get edge vectors of the pixel triangle
+  vec3 dp1 = dFdx(p);
+  vec3 dp2 = dFdy(p);
+  vec2 duv1 = dFdx(uv);
+  vec2 duv2 = dFdy(uv);
+
+  // solve the linear system
+  vec3 dp2perp = cross(dp2, N);
+  vec3 dp1perp = cross(N, dp1);
+  vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+  vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+
+  // construct a scale-invariant frame
+  float invmax = inversesqrt( max(dot(T,T), dot(B,B)));
+  return mat3(T * invmax, B * invmax, N);
 }
 `;
 
