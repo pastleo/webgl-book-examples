@@ -1,0 +1,14 @@
+{
+  "name": "07-webgl1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "build": "esbuild main.js --bundle --minify --target=es6 --outfile=main-dist.js"
+  },
+  "author": "PastLeo",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.15.18"
+  }
+}
