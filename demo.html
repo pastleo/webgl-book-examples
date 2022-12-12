@@ -2,10 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>『從零建構 WebGL 3D 場景與遊戲』遊戲 DEMO ...</title>
-  <meta http-equiv="Refresh" content="1; url='https://webgl-book.pastleo.me/ch7/07'" />
+  <title>『從零建構 WebGL 3D 場景與遊戲』遊戲 DEMO</title>
 </head>
 <body>
-  <h1>『從零建構 WebGL 3D 場景與遊戲』遊戲 DEMO ...</h1>
+  <h1>『從零建構 WebGL 3D 場景與遊戲』最終遊戲成果: Catch the wind!</h1>
+  <p id='notice'>啟動中，請稍後...</p>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    function runFallback() {
+      document.getElementById('notice').textContent = (
+        '你的瀏覽器不支援本書的 WebGL2 版本，五秒後將轉跳到 WebGL1 版本'
+      );
+      setTimeout(function() {
+        window.location.pathname = '/webgl1/ch7-07/';
+      }, 5000)
+    }
+  </script>
+
+  <script nomodule>
+    runFallback();
+  </script>
+  <script type='module'>
+    const webglCtx = document.getElementById('canvas').getContext('webgl2');
+    if (webglCtx) {
+      window.location.pathname = '/ch7/07/';
+    } else {
+      runFallback();
+    }
+  </script>
 </body>
 </html>
