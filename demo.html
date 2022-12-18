@@ -11,11 +11,12 @@
 
   <script>
     function runFallback() {
+      window.switchingFallback = true;
       document.getElementById('notice').textContent = (
         '你的瀏覽器不支援本書的 WebGL2 版本，五秒後將轉跳到 WebGL1 版本'
       );
       setTimeout(function() {
-        window.location.pathname = '/webgl1/ch7-07/';
+        window.location.pathname = '/game_catch_the_wind/webgl1';
       }, 5000)
     }
   </script>
@@ -25,7 +26,7 @@
   </script>
   <script type='module'>
     const webglCtx = document.getElementById('canvas').getContext('webgl2');
-    if (webglCtx) {
+    if (webglCtx && !window.switchingFallback) {
       window.location.pathname = '/ch7/07/';
     } else {
       runFallback();
