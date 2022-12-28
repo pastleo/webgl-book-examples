@@ -295,7 +295,6 @@ uniform float u_seed;
 uniform float u_time;
 uniform float u_sailDistance;
 
-
 vec2 skyCoordToLatLong(vec3 skyCoord) {
   return degrees(vec2(
     atan(skyCoord.z / skyCoord.x),
@@ -324,7 +323,7 @@ float hash2(vec2 p) {
 }
 
 void main() {
-  vec3 skyCoord = normalize(v_normal * xRotate(u_sailDistance * 0.0005));
+  vec3 skyCoord = normalize(v_normal);
   vec3 starsColor = vec3(0, 0, 0);
 
   // TODO: impl starry sky
