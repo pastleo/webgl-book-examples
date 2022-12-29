@@ -295,8 +295,6 @@ uniform float u_seed;
 uniform float u_time;
 uniform float u_sailDistance;
 
-#define LAT_LONG_GRID_SIZE 2.5
-
 vec2 skyCoordToLatLong(vec3 skyCoord) {
   return degrees(vec2(
     atan(skyCoord.z / skyCoord.x),
@@ -324,50 +322,52 @@ float hash2(vec2 p) {
   return fract(sin(mod(dot(p, vec2(53, 59)), radians(180.0))) * u_seed);
 }
 
-float star(vec2 latlong, vec2 starLatLong, float size) {
+float star(vec2 latLong, vec2 starLatLong, float size) {
   return pow(
-    clamp(1.0 - length(latlong - starLatLong), 0.0, 1.0),
+    clamp(1.0 - length(latLong - starLatLong), 0.0, 1.0),
     20.0 * (1.5 - size)
-  ) * (0.25 + size * 0.75);
+  ) * (0.6 + size * 0.4);
 }
 
-float localStar(vec2 latlong, vec2 id) {
+float localStar(vec2 latLong, vec2 id) {
   float h0 = hash0(id);
   float h1 = hash1(id);
 
   vec2 starLatLong = (
-    (id + 0.5) * LAT_LONG_GRID_SIZE +
-    (vec2(h0, h1) - 0.5) * LAT_LONG_GRID_SIZE
+    (id + 0.5) * 2.5 +
+    (vec2(h0, h1) - 0.5) * 2.5
   );
   float size = (
     hash2(id) * 0.6 +
     sin(u_time * 0.001 * h0) * h1 * 0.6
   );
-  return star(latlong, starLatLong, clamp(size, 0.0, 1.0));
+  return star(latLong, starLatLong, clamp(size, 0.0, 1.0));
 }
 
 vec3 starsLayer(vec3 skyCoord) {
-  vec2 latlong = skyCoordToLatLong(skyCoord);
-
   vec3 color = vec3(0, 0, 0);
 
-  for(int i = -1; i <= 1; i++) {
-    for(int j = -1; j <= 1; j++) {
-      vec2 id = floor(latlong / LAT_LONG_GRID_SIZE);
-      color += localStar(latlong, id + vec2(i, j));
+  vec2 latLong = skyCoordToLatLong(skyCoord);
+  vec2 id = floor(latLong / 2.5);
+
+  for (int i = -1; i <= 1; i++) {
+    for (int j = -1; j <= 1; j++) {
+      color += localStar(latLong, id + vec2(i, j));
     }
   }
-  return color * smoothstep(60.0, 50.0, abs(latlong.y));
+  return color * smoothstep(60.0, 50.0, abs(latLong.y));
 }
 
 void main() {
   vec3 skyCoord = normalize(v_normal * xRotate(u_sailDistance * 0.0005));
   vec3 starsColor = vec3(0, 0, 0);
+
+  vec2 latLong = skyCoordToLatLong(skyCoord);
   
   starsColor += starsLayer(skyCoord);
   starsColor += (
     starsLayer(skyCoord.yxz) *
-    smoothstep(sin(radians(45.0)), sin(radians(55.0)), abs(skyCoord.y))
+    smoothstep(45.0, 55.0, abs(latLong.y))
   );
 
   outColor = vec4(starsColor + vec3(0.0588, 0.0431, 0.211), 1);
